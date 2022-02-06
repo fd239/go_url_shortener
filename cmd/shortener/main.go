@@ -14,10 +14,6 @@ var (
 	urlMap = make(map[string]string)
 )
 
-//type PostBody struct {
-//	Url_string string `json:"url_string"`
-//}
-
 func hash(s string) string {
 	data := []byte(s)
 	return fmt.Sprintf("%x", md5.Sum(data))
@@ -41,24 +37,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		//var pBody = PostBody{}
 		body, _ := ioutil.ReadAll(r.Body)
-		//
-		//if err := json.Unmarshal(body, &pBody); err != nil {
-		//	http.Error(w, err.Error(), http.StatusBadRequest)
-		//	return
-		//}
-		//
-		//if len(pBody.Url_string) == 0 {
-		//	http.Error(w, "No url_string in body", http.StatusBadRequest)
-		//	return
-		//}
-
 		hashString := hash(string(body))
 		urlMap[hashString] = string(body)
 
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(hashString))
+		w.Write([]byte("http://localhost:8080/" + hashString))
 	}
 }
 
