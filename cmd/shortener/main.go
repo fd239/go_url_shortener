@@ -31,7 +31,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		if val, ok := urlMap[res]; ok {
 			w.Header().Set("Location", val)
-			w.WriteHeader(http.StatusMovedPermanently)
+			w.WriteHeader(http.StatusTemporaryRedirect)
 		} else {
 			http.Error(w, "", http.StatusBadRequest)
 		}
