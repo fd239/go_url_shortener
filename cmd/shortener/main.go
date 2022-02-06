@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,9 +14,9 @@ var (
 	urlMap = make(map[string]string)
 )
 
-type PostBody struct {
-	Url_string string `json:"url_string"`
-}
+//type PostBody struct {
+//	Url_string string `json:"url_string"`
+//}
 
 func hash(s string) string {
 	data := []byte(s)
@@ -44,25 +43,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		var pBody = PostBody{}
+		//var pBody = PostBody{}
 		body, _ := ioutil.ReadAll(r.Body)
+		//
+		//if err := json.Unmarshal(body, &pBody); err != nil {
+		//	http.Error(w, err.Error(), http.StatusBadRequest)
+		//	return
+		//}
+		//
+		//if len(pBody.Url_string) == 0 {
+		//	http.Error(w, "No url_string in body", http.StatusBadRequest)
+		//	return
+		//}
 
-		if err := json.Unmarshal(body, &pBody); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if len(pBody.Url_string) == 0 {
-			http.Error(w, "No url_string in body", http.StatusBadRequest)
-			return
-		}
-
-		hashString := hash(pBody.Url_string)
-		urlMap[hashString] = pBody.Url_string
+		hashString := hash(string(body))
+		urlMap[hashString] = string(body)
 
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(hashString))
-
 	}
 }
 
