@@ -1,12 +1,9 @@
 package main
 
 import (
-	"log"
-	"net/http"
+	"github.com/fd239/go_url_shortener/internal/app"
 )
 
 func main() {
-	urlMap := make(map[string]string)
-	http.HandleFunc("/", ShortenerHandler(urlMap))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	app.ServerStart()
 }
