@@ -53,7 +53,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "POST 200",
 			args: args{http.MethodPost, "/", strings.NewReader(_const.TestUrl)},
-			want: want{http.StatusCreated, _const.TestShortIdFullUrl, ""},
+			want: want{http.StatusCreated, _const.Hostname + _const.TestShortId, ""},
 		},
 		{
 			name: "POST 400 Empty body",

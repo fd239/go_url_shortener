@@ -43,7 +43,7 @@ func saveShortUrl(w http.ResponseWriter, r *http.Request) {
 	shortUrl := SaveShortRoute(string(body))
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://localhost:8080/" + shortUrl)))
+	w.Write([]byte(fmt.Sprintf(_const.Hostname + shortUrl)))
 }
 
 func ServerStart() {
