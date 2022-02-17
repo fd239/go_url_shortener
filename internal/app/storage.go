@@ -21,7 +21,8 @@ func SaveShortRoute(url string) string {
 func GetShortRoute(routeId string) (string, error) {
 	if result, ok := urlMap[routeId]; ok {
 		return result, nil
-	} else {
-		return "", errors.New(_const.ErrMsg_NoUrlInMap)
 	}
+
+	return "", errors.New(_const.ErrMsg_NoUrlInMap)
+
 }
