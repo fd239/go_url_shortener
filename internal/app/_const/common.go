@@ -1,5 +1,5 @@
 package _const
 
 const (
-	Hostname = "http://localhost:8080/"
+	Hostname = "http://localhost:8080"
 )
