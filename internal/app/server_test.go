@@ -27,7 +27,7 @@ func getJSONRequest() io.Reader {
 }
 
 func getJSONResponse() string {
-	res := ShortenResponse{_const.TestShortId}
+	res := ShortenResponse{fmt.Sprintf("%s/%s", _const.Hostname, _const.TestShortId)}
 	b, _ := json.Marshal(res)
 
 	return string(b)
