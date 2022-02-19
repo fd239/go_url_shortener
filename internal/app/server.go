@@ -37,7 +37,7 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 
 	url := SaveShortRoute(shorten.URL)
 
-	response := ShortenResponse{Result: url}
+	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", _const.Hostname, url)}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
