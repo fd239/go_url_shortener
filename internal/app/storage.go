@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"os"
+	"path/filepath"
 )
 
 type UrlEntity struct {
@@ -27,6 +28,7 @@ type consumer struct {
 }
 
 func NewConsumer(fileName string) (*consumer, error) {
+	err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
@@ -47,6 +49,7 @@ type producer struct {
 }
 
 func NewProducer(fileName string) (*producer, error) {
+	err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
 		return nil, err
