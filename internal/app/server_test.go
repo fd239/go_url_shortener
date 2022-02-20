@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -27,7 +28,7 @@ func getJSONRequest() io.Reader {
 }
 
 func getJSONResponse() string {
-	res := ShortenResponse{fmt.Sprintf("%s/%s", _const.Hostname, _const.TestShortId)}
+	res := ShortenResponse{fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), _const.TestShortId)}
 	b, _ := json.Marshal(res)
 
 	return string(b)
@@ -76,7 +77,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "POST 200",
 			args: args{http.MethodPost, "/", strings.NewReader(_const.TestUrl)},
-			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", _const.Hostname, _const.TestShortId), "", "text/plain; charset=utf-8"},
+			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), _const.TestShortId), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST 400 Empty body",

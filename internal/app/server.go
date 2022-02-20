@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 )
 
 func CreateRouter() *chi.Mux {
@@ -37,7 +38,7 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 
 	url := SaveShortRoute(shorten.URL)
 
-	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", _const.Hostname, url)}
+	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), url)}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
@@ -79,10 +80,10 @@ func saveShortUrl(w http.ResponseWriter, r *http.Request) {
 	shortUrl := SaveShortRoute(string(body))
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("%s/%s", _const.Hostname, shortUrl)))
+	w.Write([]byte(fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), shortUrl)))
 }
 
 func ServerStart() {
 	router := CreateRouter()
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(os.Getenv("SERVER_ADDRESS"), router))
 }
