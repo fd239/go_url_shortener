@@ -88,15 +88,11 @@ func (db *Database) SaveShortRoute(url string) (string, error) {
 }
 
 func (db *Database) GetShortRoute(routeId string) (string, error) {
-	if db.LocalStorage {
-		if result, ok := db.LocalStruct[routeId]; ok {
-			return result, nil
-		}
-
-		return "", common.ErrNoUrlInMap
+	if result, ok := db.LocalStruct[routeId]; ok {
+		return result, nil
 	}
 
-	return "", nil
+	return "", common.ErrNoUrlInMap
 }
 
 func (db *Database) RestoreURLs() {
