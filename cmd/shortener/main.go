@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-
+	app.InitDB()
 	app.ServerStart()
 }

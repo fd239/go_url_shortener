@@ -37,7 +37,7 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := SaveShortRoute(shorten.URL)
+	url, _ := DB.SaveShortRoute(shorten.URL)
 
 	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, url)}
 	w.Header().Set("Content-Type", "application/json")
@@ -50,7 +50,7 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 func getUrl(w http.ResponseWriter, r *http.Request) {
 	urlId := chi.URLParam(r, "id")
 
-	url, err := GetShortRoute(urlId)
+	url, err := DB.GetShortRoute(urlId)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -78,7 +78,7 @@ func saveShortUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortUrl := SaveShortRoute(string(body))
+	shortUrl, _ := DB.SaveShortRoute(string(body))
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortUrl)))
