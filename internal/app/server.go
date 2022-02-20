@@ -3,13 +3,14 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fd239/go_url_shortener/internal/app/_const"
+	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/go-chi/chi/v5"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 )
+
+var config *common.Config
 
 func CreateRouter() *chi.Mux {
 	r := chi.NewRouter()
@@ -38,7 +39,7 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 
 	url := SaveShortRoute(shorten.URL)
 
-	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), url)}
+	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, url)}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
@@ -66,24 +67,24 @@ func saveShortUrl(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
-		log.Println(_const.ErrMsg_BodyReadError)
-		http.Error(w, _const.ErrMsg_BodyReadError, http.StatusBadRequest)
+		log.Println(common.ErrBodyReadError)
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if len(body) == 0 {
-		log.Println(_const.ErrMsg_EmptyBody)
-		http.Error(w, _const.ErrMsg_EmptyBody, http.StatusBadRequest)
+		log.Println(common.ErrEmptyBody)
+		http.Error(w, common.ErrEmptyBody.Error(), http.StatusBadRequest)
 		return
 	}
 
 	shortUrl := SaveShortRoute(string(body))
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), shortUrl)))
+	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortUrl)))
 }
 
 func ServerStart() {
 	router := CreateRouter()
-	log.Fatal(http.ListenAndServe(os.Getenv("SERVER_ADDRESS"), router))
+	log.Fatal(http.ListenAndServe(common.Cfg.ServerAddress, router))
 }

@@ -2,7 +2,7 @@ package app
 
 import (
 	"fmt"
-	"github.com/fd239/go_url_shortener/internal/app/_const"
+	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -13,7 +13,7 @@ func TestSaveShortRoute(t *testing.T) {
 		args string
 		want string
 	}{
-		{"OK", _const.TestUrl, _const.TestShortId},
+		{"OK", common.TestUrl, common.TestShortId},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,10 +29,10 @@ func TestGetShortRoute(t *testing.T) {
 		want    string
 		wantErr assert.ErrorAssertionFunc
 	}{
-		{"OK", _const.TestShortId, _const.TestUrl, assert.NoError},
+		{"OK", common.TestShortId, common.TestUrl, assert.NoError},
 		{"With error", "123", "", assert.Error},
 	}
-	urlMap[_const.TestShortId] = _const.TestUrl
+	urlMap[common.TestShortId] = common.TestUrl
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetShortRoute(tt.routeId)

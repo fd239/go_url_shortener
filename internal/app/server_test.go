@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/fd239/go_url_shortener/internal/app/_const"
+	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -12,14 +12,13 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 )
 
 func getJSONRequest() io.Reader {
 	var buf bytes.Buffer
-	req := ShortenRequest{URL: _const.TestUrl}
+	req := ShortenRequest{URL: common.TestUrl}
 	if err := json.NewEncoder(&buf).Encode(req); err != nil {
 		log.Println("JSON encode error")
 	}
@@ -28,7 +27,7 @@ func getJSONRequest() io.Reader {
 }
 
 func getJSONResponse() string {
-	res := ShortenResponse{fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), _const.TestShortId)}
+	res := ShortenResponse{fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId)}
 	b, _ := json.Marshal(res)
 
 	return string(b)
@@ -76,18 +75,18 @@ func TestRouter(t *testing.T) {
 	}{
 		{
 			name: "POST 200",
-			args: args{http.MethodPost, "/", strings.NewReader(_const.TestUrl)},
-			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), _const.TestShortId), "", "text/plain; charset=utf-8"},
+			args: args{http.MethodPost, "/", strings.NewReader(common.TestUrl)},
+			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST 400 Empty body",
 			args: args{http.MethodPost, "/", nil},
-			want: want{http.StatusBadRequest, _const.ErrMsg_EmptyBody, "", "text/plain; charset=utf-8"},
+			want: want{http.StatusBadRequest, common.ErrEmptyBody.Error(), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "GET 307",
-			args: args{http.MethodGet, "/" + _const.TestShortId, nil},
-			want: want{http.StatusTemporaryRedirect, "", _const.TestUrl, ""},
+			args: args{http.MethodGet, "/" + common.TestShortId, nil},
+			want: want{http.StatusTemporaryRedirect, "", common.TestUrl, ""},
 		},
 		{
 			name: "GET 405 No ID in request",
@@ -97,7 +96,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "GET 400 No URL in map",
 			args: args{http.MethodGet, "/123", nil},
-			want: want{http.StatusBadRequest, _const.ErrMsg_NoUrlInMap, "", "text/plain; charset=utf-8"},
+			want: want{http.StatusBadRequest, common.ErrNoUrlInMap.Error(), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST API 200",

@@ -2,9 +2,8 @@ package app
 
 import (
 	"crypto/md5"
-	"errors"
 	"fmt"
-	"github.com/fd239/go_url_shortener/internal/app/_const"
+	"github.com/fd239/go_url_shortener/internal/app/common"
 )
 
 var urlMap = map[string]string{}
@@ -23,6 +22,6 @@ func GetShortRoute(routeId string) (string, error) {
 		return result, nil
 	}
 
-	return "", errors.New(_const.ErrMsg_NoUrlInMap)
+	return "", common.ErrNoUrlInMap
 
 }
