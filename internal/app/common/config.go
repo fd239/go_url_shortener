@@ -19,7 +19,7 @@ func init() {
 		panic(err)
 	}
 
-	flag.StringVar(&Cfg.ServerAddress, "ServerAddress", Cfg.ServerAddress, "server address")
-	flag.StringVar(&Cfg.BaseURL, "BaseURL", Cfg.BaseURL, "base url")
-	flag.StringVar(&Cfg.FileStoragePath, "FileStoragePath", Cfg.FileStoragePath, "file storage path")
+	flag.StringVar(&Cfg.ServerAddress, "a", Cfg.ServerAddress, "server address")
+	flag.StringVar(&Cfg.BaseURL, "b", Cfg.BaseURL, "base url")
+	flag.StringVar(&Cfg.FileStoragePath, "f", Cfg.FileStoragePath, "file storage path")
 }
