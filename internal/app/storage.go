@@ -60,8 +60,8 @@ func NewProducer(fileName string) (*producer, error) {
 	}, nil
 }
 
-func (p *producer) WriteLocalStruct(LocalStruct map[string]string) error {
-	return p.encoder.Encode(&LocalStruct)
+func (p *producer) WriteURL(UrlEntity *UrlEntity) error {
+	return p.encoder.Encode(&UrlEntity)
 }
 func (p *producer) Close() error {
 	return p.file.Close()
@@ -73,8 +73,15 @@ func (db *Database) SaveShortRoute(url string) (string, error) {
 	data := []byte(url)
 	hashString := fmt.Sprintf("%x", md5.Sum(data))
 
-	db.LocalStruct[hashString] = url
-	err := db.Producer.WriteLocalStruct(db.LocalStruct)
+	if db.LocalStorage {
+		db.LocalStruct[hashString] = url
+		return hashString, nil
+	}
+
+	err := db.Producer.WriteURL(&UrlEntity{
+		URL:        url,
+		HashString: hashString,
+	})
 
 	return hashString, err
 
