@@ -60,7 +60,6 @@ func getUrl(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", url)
 	w.WriteHeader(http.StatusTemporaryRedirect)
-
 }
 
 func saveShortUrl(w http.ResponseWriter, r *http.Request) {

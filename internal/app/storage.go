@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -39,6 +40,10 @@ func NewConsumer(fileName string) (*consumer, error) {
 	}, nil
 }
 
+func (c *consumer) HasNext() bool {
+	return c.decoder.More()
+}
+
 func (c *consumer) Close() error {
 	return c.file.Close()
 }
@@ -61,7 +66,7 @@ func NewProducer(fileName string) (*producer, error) {
 }
 
 func (p *producer) WriteURL(UrlEntity *UrlEntity) error {
-	return p.encoder.Encode(&UrlEntity)
+	return p.encoder.Encode(UrlEntity)
 }
 func (p *producer) Close() error {
 	return p.file.Close()
@@ -70,18 +75,21 @@ func (p *producer) Close() error {
 var DB Database
 
 func (db *Database) SaveShortRoute(url string) (string, error) {
+	var err error
 	data := []byte(url)
 	hashString := fmt.Sprintf("%x", md5.Sum(data))
 
-	if db.LocalStorage {
-		db.LocalStruct[hashString] = url
-		return hashString, nil
-	}
+	db.LocalStruct[hashString] = url
 
-	err := db.Producer.WriteURL(&UrlEntity{
-		URL:        url,
-		HashString: hashString,
-	})
+	if !db.LocalStorage {
+		err := db.Producer.WriteURL(&UrlEntity{
+			URL:        url,
+			HashString: hashString,
+		})
+		if err != nil {
+			log.Println("Write url to file error")
+		}
+	}
 
 	return hashString, err
 
@@ -96,7 +104,16 @@ func (db *Database) GetShortRoute(routeId string) (string, error) {
 }
 
 func (db *Database) RestoreURLs() {
-	db.Consumer.decoder.Decode(&db.LocalStruct)
+	for db.Consumer.HasNext() {
+		entity := UrlEntity{}
+		err := db.Consumer.decoder.Decode(&entity)
+		if err != nil {
+			log.Println("Error db file decode")
+			continue
+		}
+		db.LocalStruct[entity.HashString] = entity.URL
+	}
+
 }
 
 func InitDB() {
