@@ -1,6 +1,9 @@
 package common
 
-import "github.com/caarlos0/env/v6"
+import (
+	"flag"
+	"os"
+)
 
 type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"  envDefault:"localhost:8080"`
@@ -11,8 +14,7 @@ type Config struct {
 var Cfg Config
 
 func init() {
-	err := env.Parse(&Cfg)
-	if err != nil {
-		panic(err)
-	}
+	flag.StringVar(&Cfg.ServerAddress, "ServerAddress", os.Getenv("SERVER_ADDRESS"), "server address")
+	flag.StringVar(&Cfg.BaseURL, "BaseURL", os.Getenv("BASE_URL"), "base url")
+	flag.StringVar(&Cfg.FileStoragePath, "FileStoragePath", os.Getenv("FILE_STORAGE_PATH"), "file storage path")
 }
