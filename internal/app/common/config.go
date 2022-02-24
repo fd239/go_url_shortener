@@ -2,7 +2,7 @@ package common
 
 import (
 	"flag"
-	"os"
+	"github.com/caarlos0/env/v6"
 )
 
 type Config struct {
@@ -14,7 +14,12 @@ type Config struct {
 var Cfg Config
 
 func init() {
-	flag.StringVar(&Cfg.ServerAddress, "ServerAddress", os.Getenv("SERVER_ADDRESS"), "server address")
-	flag.StringVar(&Cfg.BaseURL, "BaseURL", os.Getenv("BASE_URL"), "base url")
-	flag.StringVar(&Cfg.FileStoragePath, "FileStoragePath", os.Getenv("FILE_STORAGE_PATH"), "file storage path")
+	err := env.Parse(&Cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	flag.StringVar(&Cfg.ServerAddress, "ServerAddress", Cfg.ServerAddress, "server address")
+	flag.StringVar(&Cfg.BaseURL, "BaseURL", Cfg.BaseURL, "base url")
+	flag.StringVar(&Cfg.FileStoragePath, "FileStoragePath", Cfg.FileStoragePath, "file storage path")
 }
