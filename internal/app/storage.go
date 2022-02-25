@@ -116,15 +116,14 @@ func (db *Database) RestoreURLs() {
 
 }
 
-func InitDB() {
-
-	producer, _ := NewProducer(common.Cfg.FileStoragePath)
-	consumer, _ := NewConsumer(common.Cfg.FileStoragePath)
+func InitDB(FIleStoragePath string) {
+	producer, _ := NewProducer(FIleStoragePath)
+	consumer, _ := NewConsumer(FIleStoragePath)
 
 	DB = Database{
-		LocalStorage: len(common.Cfg.FileStoragePath) == 0,
+		LocalStorage: len(FIleStoragePath) == 0,
 		LocalStruct:  make(map[string]string),
-		Filename:     common.Cfg.FileStoragePath,
+		Filename:     FIleStoragePath,
 		Producer:     producer,
 		Consumer:     consumer,
 	}
