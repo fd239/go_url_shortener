@@ -19,13 +19,14 @@ func init() {
 		panic(err)
 	}
 
-	flag.StringVar(&Cfg.ServerAddress, "a", Cfg.ServerAddress, "server address")
-	flag.StringVar(&Cfg.BaseURL, "b", Cfg.BaseURL, "base url")
-	flag.Func("f", "File storage path", func(path string) error {
-		if path != "" {
-			Cfg.FileStoragePath = path
-			return nil
-		}
-		return nil
-	})
+	addrPointer := flag.String("a", Cfg.ServerAddress, "Server address")
+	baseAddrPointer := flag.String("b", Cfg.BaseURL, "Base URL address")
+	fileStoragePathPointer := flag.String("f", Cfg.FileStoragePath, "File storage path")
+
+	flag.Parse()
+
+	Cfg.ServerAddress = *addrPointer
+	Cfg.BaseURL = *baseAddrPointer
+	Cfg.FileStoragePath = *fileStoragePathPointer
+
 }

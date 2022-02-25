@@ -117,7 +117,6 @@ func (db *Database) RestoreURLs() {
 }
 
 func InitDB() {
-
 	producer, _ := NewProducer(common.Cfg.FileStoragePath)
 	consumer, _ := NewConsumer(common.Cfg.FileStoragePath)
 
