@@ -105,7 +105,7 @@ func TestRouter(t *testing.T) {
 		},
 	}
 
-	InitDB("")
+	InitDB()
 	r := CreateRouter()
 	ts := httptest.NewServer(r)
 	defer ts.Close()
