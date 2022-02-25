@@ -13,8 +13,9 @@ type Config struct {
 
 var Cfg Config
 
-func init() {
+func InitConfig() {
 	err := env.Parse(&Cfg)
+
 	if err != nil {
 		panic(err)
 	}
@@ -28,5 +29,4 @@ func init() {
 	Cfg.ServerAddress = *addrPointer
 	Cfg.BaseURL = *baseAddrPointer
 	Cfg.FileStoragePath = *fileStoragePathPointer
-
 }

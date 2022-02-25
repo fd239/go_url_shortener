@@ -16,11 +16,11 @@ type UrlEntity struct {
 }
 
 type Database struct {
-	LocalStruct  map[string]string
-	Filename     string
-	LocalStorage bool
-	Producer     *producer
-	Consumer     *consumer
+	Items       map[string]string
+	Filename    string
+	StoreInFile bool
+	Producer    *producer
+	Consumer    *consumer
 }
 
 type consumer struct {
@@ -28,16 +28,23 @@ type consumer struct {
 	decoder *json.Decoder
 }
 
-func NewConsumer(fileName string) (*consumer, error) {
+func NewConsumer(fileName string) *consumer {
 	err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
-	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
+
 	if err != nil {
-		return nil, err
+		return nil
 	}
+
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
+
+	if err != nil {
+		return nil
+	}
+
 	return &consumer{
 		file:    file,
 		decoder: json.NewDecoder(file),
-	}, nil
+	}
 }
 
 func (c *consumer) HasNext() bool {
@@ -53,16 +60,23 @@ type producer struct {
 	encoder *json.Encoder
 }
 
-func NewProducer(fileName string) (*producer, error) {
+func NewProducer(fileName string) *producer {
 	err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
-	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+
 	if err != nil {
-		return nil, err
+		return nil
 	}
+
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+
+	if err != nil {
+		return nil
+	}
+
 	return &producer{
 		file:    file,
 		encoder: json.NewEncoder(file),
-	}, nil
+	}
 }
 
 func (p *producer) WriteURL(UrlEntity *UrlEntity) error {
@@ -79,9 +93,9 @@ func (db *Database) SaveShortRoute(url string) (string, error) {
 	data := []byte(url)
 	hashString := fmt.Sprintf("%x", md5.Sum(data))
 
-	db.LocalStruct[hashString] = url
+	db.Items[hashString] = url
 
-	if !db.LocalStorage {
+	if db.StoreInFile {
 		err := db.Producer.WriteURL(&UrlEntity{
 			URL:        url,
 			HashString: hashString,
@@ -96,7 +110,7 @@ func (db *Database) SaveShortRoute(url string) (string, error) {
 }
 
 func (db *Database) GetShortRoute(routeId string) (string, error) {
-	if result, ok := db.LocalStruct[routeId]; ok {
+	if result, ok := db.Items[routeId]; ok {
 		return result, nil
 	}
 
@@ -111,24 +125,21 @@ func (db *Database) RestoreURLs() {
 			log.Println("Error db file decode")
 			continue
 		}
-		db.LocalStruct[entity.HashString] = entity.URL
+		db.Items[entity.HashString] = entity.URL
 	}
 
 }
 
 func InitDB() {
-	producer, _ := NewProducer(common.Cfg.FileStoragePath)
-	consumer, _ := NewConsumer(common.Cfg.FileStoragePath)
-
 	DB = Database{
-		LocalStorage: len(common.Cfg.FileStoragePath) == 0,
-		LocalStruct:  make(map[string]string),
-		Filename:     common.Cfg.FileStoragePath,
-		Producer:     producer,
-		Consumer:     consumer,
+		StoreInFile: len(common.Cfg.FileStoragePath) > 0,
+		Items:       make(map[string]string),
+		Filename:    common.Cfg.FileStoragePath,
+		Producer:    NewProducer(common.Cfg.FileStoragePath),
+		Consumer:    NewConsumer(common.Cfg.FileStoragePath),
 	}
 
-	if !DB.LocalStorage {
+	if DB.StoreInFile {
 		DB.RestoreURLs()
 	}
 
