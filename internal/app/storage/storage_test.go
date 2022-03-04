@@ -1,11 +1,28 @@
-package app
+package storage
 
 import (
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
+
+func getProducer() *producer {
+	prod, err := NewProducer(common.TestDBName)
+	if err != nil {
+		log.Println("Consumer creation error: ")
+	}
+	return prod
+}
+
+func getConsumer() *consumer {
+	cons, err := NewConsumer(common.TestDBName)
+	if err != nil {
+		log.Println("Consumer creation error: ", err.Error())
+	}
+	return cons
+}
 
 func TestDatabase_SaveShortRoute(t *testing.T) {
 	type fields struct {
@@ -28,11 +45,11 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 		{
 			"OK",
 			fields{
-				Items:       map[string]string{},
+				Items:       map[string]string{common.TestUrl: common.TestShortId},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
-				Producer:    NewProducer(common.TestDBName),
-				Consumer:    NewConsumer(common.TestDBName),
+				Producer:    getProducer(),
+				Consumer:    getConsumer(),
 			},
 			args{common.TestUrl},
 			common.TestShortId,
@@ -50,7 +67,7 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 				Consumer:    tt.fields.Consumer,
 			}
 
-			got, err := db.SaveShortRoute(tt.args.url)
+			got, err := db.Get(tt.args.url)
 			if !tt.wantErr(t, err, fmt.Sprintf("SaveShortRoute(%v)", tt.args.url)) {
 				return
 			}
@@ -83,8 +100,8 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 				Items:       map[string]string{common.TestShortId: common.TestUrl},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
-				Producer:    NewProducer(common.TestDBName),
-				Consumer:    NewConsumer(common.TestDBName),
+				Producer:    getProducer(),
+				Consumer:    getConsumer(),
 			},
 			args{common.TestShortId},
 			common.TestUrl,
@@ -96,8 +113,8 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 				Items:       map[string]string{},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
-				Producer:    NewProducer(common.TestDBName),
-				Consumer:    NewConsumer(common.TestDBName),
+				Producer:    getProducer(),
+				Consumer:    getConsumer(),
 			},
 			args{common.TestUrl},
 			"",
@@ -113,7 +130,7 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 				Producer:    tt.fields.Producer,
 				Consumer:    tt.fields.Consumer,
 			}
-			got, err := db.GetShortRoute(tt.args.routeId)
+			got, err := db.Get(tt.args.routeId)
 			if !tt.wantErr(t, err, fmt.Sprintf("GetShortRoute(%v)", tt.args.routeId)) {
 				return
 			}

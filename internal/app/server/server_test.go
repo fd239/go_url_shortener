@@ -1,10 +1,12 @@
-package app
+package server
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
+	"github.com/fd239/go_url_shortener/internal/app/handlers"
+	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -16,19 +18,24 @@ import (
 	"testing"
 )
 
-func getJSONRequest() io.Reader {
+func getJSONRequest() *bytes.Buffer {
 	var buf bytes.Buffer
-	req := ShortenRequest{URL: common.TestUrl}
+	req := handlers.ShortenRequest{URL: common.TestUrl}
 	if err := json.NewEncoder(&buf).Encode(req); err != nil {
 		log.Println("JSON encode error")
 	}
 
-	return bytes.NewReader(buf.Bytes())
+	return &buf
 }
 
 func getJSONResponse() string {
-	res := ShortenResponse{fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId)}
-	b, _ := json.Marshal(res)
+	res := handlers.ShortenResponse{fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId)}
+	b, err := json.Marshal(res)
+
+	if err != nil {
+		log.Println("JSON Marshall error: ", err.Error())
+		return ""
+	}
 
 	return string(b)
 }
@@ -105,7 +112,13 @@ func TestRouter(t *testing.T) {
 		},
 	}
 
-	InitDB()
+	var err error
+	handlers.Store, err = storage.InitDB()
+
+	if err != nil {
+		fmt.Println("Error database init: ", err.Error())
+	}
+
 	r := CreateRouter()
 	ts := httptest.NewServer(r)
 	defer ts.Close()

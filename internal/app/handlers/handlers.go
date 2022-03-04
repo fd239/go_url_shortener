@@ -1,25 +1,17 @@
-package app
+package handlers
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
+	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"io/ioutil"
 	"log"
 	"net/http"
 )
 
-var config *common.Config
-
-func CreateRouter() *chi.Mux {
-	r := chi.NewRouter()
-	r.Post("/api/shorten", handleUrl)
-	r.Get("/{id}", getUrl)
-	r.Post("/", saveShortUrl)
-
-	return r
-}
+var Store *storage.Database
 
 type ShortenRequest struct {
 	URL string `json:"url"`
@@ -29,7 +21,7 @@ type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
-func handleUrl(w http.ResponseWriter, r *http.Request) {
+func HandleUrl(w http.ResponseWriter, r *http.Request) {
 	shorten := ShortenRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&shorten); err != nil {
@@ -37,7 +29,13 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, _ := DB.SaveShortRoute(shorten.URL)
+	url, err := Store.Insert(shorten.URL)
+
+	if err != nil {
+		errString := fmt.Sprintf("Save short route error: %s", err.Error())
+		log.Println(errString)
+		http.Error(w, errString, http.StatusBadRequest)
+	}
 
 	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, url)}
 	w.Header().Set("Content-Type", "application/json")
@@ -47,10 +45,10 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getUrl(w http.ResponseWriter, r *http.Request) {
+func GetUrl(w http.ResponseWriter, r *http.Request) {
 	urlId := chi.URLParam(r, "id")
 
-	url, err := DB.GetShortRoute(urlId)
+	url, err := Store.Get(urlId)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -62,7 +60,7 @@ func getUrl(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func saveShortUrl(w http.ResponseWriter, r *http.Request) {
+func SaveShortUrl(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
@@ -77,13 +75,14 @@ func saveShortUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortUrl, _ := DB.SaveShortRoute(string(body))
+	shortUrl, err := Store.Insert(string(body))
+
+	if err != nil {
+		errString := fmt.Sprintf("Save short route error: %s", err.Error())
+		log.Println(errString)
+		http.Error(w, errString, http.StatusBadRequest)
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortUrl)))
-}
-
-func ServerStart() {
-	router := CreateRouter()
-	log.Fatal(http.ListenAndServe(common.Cfg.ServerAddress, router))
 }
