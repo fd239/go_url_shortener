@@ -55,8 +55,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 	respBody, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	defer resp.Body.Close()
-
 	location := resp.Header.Get("location")
 	contentType := resp.Header.Get("Content-Type")
 
@@ -128,11 +126,14 @@ func TestRouter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body, location, contentType := testRequest(t, ts, tt.args.method, tt.args.target, tt.args.body)
-			body = strings.TrimSuffix(body, "\n")
 			assert.Equal(t, resp.StatusCode, tt.want.code)
 			assert.Equal(t, body, tt.want.response)
 			assert.Equal(t, location, tt.want.location)
 			assert.Equal(t, contentType, tt.want.contentType)
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("Response body close error: ", err.Error())
+			}
 		})
 	}
 }
