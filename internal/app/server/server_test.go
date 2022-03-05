@@ -29,7 +29,7 @@ func getJSONRequest() *bytes.Buffer {
 }
 
 func getJSONResponse() string {
-	res := handlers.ShortenResponse{fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId)}
+	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId)}
 	b, err := json.Marshal(res)
 
 	if err != nil {
