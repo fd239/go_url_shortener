@@ -18,9 +18,9 @@ type server struct {
 
 func CreateRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Post("/api/shorten", handlers.HandleUrl)
-	r.Get("/{id}", handlers.GetUrl)
-	r.Post("/", handlers.SaveShortUrl)
+	r.Post("/api/shorten", handlers.HandleURL)
+	r.Get("/{id}", handlers.GetURL)
+	r.Post("/", handlers.SaveShortURL)
 
 	return r
 }

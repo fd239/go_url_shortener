@@ -45,13 +45,13 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 		{
 			"OK",
 			fields{
-				Items:       map[string]string{common.TestUrl: common.TestShortId},
+				Items:       map[string]string{common.TestURL: common.TestShortId},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
-			args{common.TestUrl},
+			args{common.TestURL},
 			common.TestShortId,
 			assert.NoError,
 		},
@@ -85,7 +85,7 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 		Consumer    *consumer
 	}
 	type args struct {
-		routeId string
+		routeID string
 	}
 	tests := []struct {
 		name    string
@@ -97,14 +97,14 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 		{
 			"OK",
 			fields{
-				Items:       map[string]string{common.TestShortId: common.TestUrl},
+				Items:       map[string]string{common.TestShortId: common.TestURL},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
 			args{common.TestShortId},
-			common.TestUrl,
+			common.TestURL,
 			assert.NoError,
 		},
 		{
@@ -116,7 +116,7 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
-			args{common.TestUrl},
+			args{common.TestURL},
 			"",
 			assert.Error,
 		},
@@ -130,11 +130,11 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 				Producer:    tt.fields.Producer,
 				Consumer:    tt.fields.Consumer,
 			}
-			got, err := db.Get(tt.args.routeId)
-			if !tt.wantErr(t, err, fmt.Sprintf("GetShortRoute(%v)", tt.args.routeId)) {
+			got, err := db.Get(tt.args.routeID)
+			if !tt.wantErr(t, err, fmt.Sprintf("GetShortRoute(%v)", tt.args.routeID)) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "GetShortRoute(%v)", tt.args.routeId)
+			assert.Equalf(t, tt.want, got, "GetShortRoute(%v)", tt.args.routeID)
 		})
 	}
 }

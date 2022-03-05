@@ -86,7 +86,10 @@ func (db *Database) Insert(item string) (string, error) {
 	db.Items[hashString] = item
 
 	if db.StoreInFile {
-		db.SaveItems()
+		err := db.SaveItems()
+		if err != nil {
+			log.Println("DB Save items error: ", err.Error())
+		}
 	}
 
 	return hashString, err
@@ -98,7 +101,7 @@ func (db *Database) Get(id string) (string, error) {
 		return result, nil
 	}
 
-	return "", common.ErrNoUrlInMap
+	return "", common.ErrNoURLInMap
 }
 
 func (db *Database) RestoreItems() error {

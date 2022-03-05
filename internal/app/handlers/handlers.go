@@ -21,7 +21,7 @@ type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
-func HandleUrl(w http.ResponseWriter, r *http.Request) {
+func HandleURL(w http.ResponseWriter, r *http.Request) {
 	shorten := ShortenRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&shorten); err != nil {
@@ -45,10 +45,10 @@ func HandleUrl(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetUrl(w http.ResponseWriter, r *http.Request) {
-	urlId := chi.URLParam(r, "id")
+func GetURL(w http.ResponseWriter, r *http.Request) {
+	urlID := chi.URLParam(r, "id")
 
-	url, err := Store.Get(urlId)
+	url, err := Store.Get(urlID)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -60,7 +60,7 @@ func GetUrl(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func SaveShortUrl(w http.ResponseWriter, r *http.Request) {
+func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
@@ -75,7 +75,7 @@ func SaveShortUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortUrl, err := Store.Insert(string(body))
+	shortURL, err := Store.Insert(string(body))
 
 	if err != nil {
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())
@@ -84,5 +84,5 @@ func SaveShortUrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortUrl)))
+	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)))
 }

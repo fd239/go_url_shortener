@@ -20,7 +20,7 @@ import (
 
 func getJSONRequest() *bytes.Buffer {
 	var buf bytes.Buffer
-	req := handlers.ShortenRequest{URL: common.TestUrl}
+	req := handlers.ShortenRequest{URL: common.TestURL}
 	if err := json.NewEncoder(&buf).Encode(req); err != nil {
 		log.Println("JSON encode error")
 	}
@@ -60,7 +60,9 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 	location := resp.Header.Get("location")
 	contentType := resp.Header.Get("Content-Type")
 
-	return resp, string(respBody), location, contentType
+	stringBody := strings.TrimSuffix(string(respBody), "\n")
+
+	return resp, stringBody, location, contentType
 }
 
 func TestRouter(t *testing.T) {
@@ -82,7 +84,7 @@ func TestRouter(t *testing.T) {
 	}{
 		{
 			name: "POST 200",
-			args: args{http.MethodPost, "/", strings.NewReader(common.TestUrl)},
+			args: args{http.MethodPost, "/", strings.NewReader(common.TestURL)},
 			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId), "", "text/plain; charset=utf-8"},
 		},
 		{
@@ -93,7 +95,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "GET 307",
 			args: args{http.MethodGet, "/" + common.TestShortId, nil},
-			want: want{http.StatusTemporaryRedirect, "", common.TestUrl, ""},
+			want: want{http.StatusTemporaryRedirect, "", common.TestURL, ""},
 		},
 		{
 			name: "GET 405 No ID in request",
@@ -103,7 +105,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "GET 400 No URL in map",
 			args: args{http.MethodGet, "/123", nil},
-			want: want{http.StatusBadRequest, common.ErrNoUrlInMap.Error(), "", "text/plain; charset=utf-8"},
+			want: want{http.StatusBadRequest, common.ErrNoURLInMap.Error(), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST API 200",
