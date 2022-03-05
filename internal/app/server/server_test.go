@@ -1,10 +1,12 @@
-package app
+package server
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/fd239/go_url_shortener/internal/app/_const"
+	"github.com/fd239/go_url_shortener/internal/app/common"
+	"github.com/fd239/go_url_shortener/internal/app/handlers"
+	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -12,24 +14,28 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 )
 
-func getJSONRequest() io.Reader {
+func getJSONRequest() *bytes.Buffer {
 	var buf bytes.Buffer
-	req := ShortenRequest{URL: _const.TestUrl}
+	req := handlers.ShortenRequest{URL: common.TestURL}
 	if err := json.NewEncoder(&buf).Encode(req); err != nil {
 		log.Println("JSON encode error")
 	}
 
-	return bytes.NewReader(buf.Bytes())
+	return &buf
 }
 
 func getJSONResponse() string {
-	res := ShortenResponse{fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), _const.TestShortId)}
-	b, _ := json.Marshal(res)
+	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID)}
+	b, err := json.Marshal(res)
+
+	if err != nil {
+		log.Println("JSON Marshall error: ", err.Error())
+		return ""
+	}
 
 	return string(b)
 }
@@ -49,12 +55,12 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 	respBody, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	defer resp.Body.Close()
-
 	location := resp.Header.Get("location")
 	contentType := resp.Header.Get("Content-Type")
 
-	return resp, string(respBody), location, contentType
+	stringBody := strings.TrimSuffix(string(respBody), "\n")
+
+	return resp, stringBody, location, contentType
 }
 
 func TestRouter(t *testing.T) {
@@ -76,18 +82,18 @@ func TestRouter(t *testing.T) {
 	}{
 		{
 			name: "POST 200",
-			args: args{http.MethodPost, "/", strings.NewReader(_const.TestUrl)},
-			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", os.Getenv("BASE_URL"), _const.TestShortId), "", "text/plain; charset=utf-8"},
+			args: args{http.MethodPost, "/", strings.NewReader(common.TestURL)},
+			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST 400 Empty body",
 			args: args{http.MethodPost, "/", nil},
-			want: want{http.StatusBadRequest, _const.ErrMsg_EmptyBody, "", "text/plain; charset=utf-8"},
+			want: want{http.StatusBadRequest, common.ErrEmptyBody.Error(), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "GET 307",
-			args: args{http.MethodGet, "/" + _const.TestShortId, nil},
-			want: want{http.StatusTemporaryRedirect, "", _const.TestUrl, ""},
+			args: args{http.MethodGet, "/" + common.TestShortID, nil},
+			want: want{http.StatusTemporaryRedirect, "", common.TestURL, ""},
 		},
 		{
 			name: "GET 405 No ID in request",
@@ -97,13 +103,20 @@ func TestRouter(t *testing.T) {
 		{
 			name: "GET 400 No URL in map",
 			args: args{http.MethodGet, "/123", nil},
-			want: want{http.StatusBadRequest, _const.ErrMsg_NoUrlInMap, "", "text/plain; charset=utf-8"},
+			want: want{http.StatusBadRequest, common.ErrNoURLInMap.Error(), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST API 200",
 			args: args{http.MethodPost, "/api/shorten", getJSONRequest()},
 			want: want{http.StatusCreated, getJSONResponse(), "", "application/json"},
 		},
+	}
+
+	var err error
+	handlers.Store, err = storage.InitDB()
+
+	if err != nil {
+		fmt.Println("Error database init: ", err.Error())
 	}
 
 	r := CreateRouter()
@@ -113,11 +126,14 @@ func TestRouter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body, location, contentType := testRequest(t, ts, tt.args.method, tt.args.target, tt.args.body)
-			body = strings.TrimSuffix(body, "\n")
 			assert.Equal(t, resp.StatusCode, tt.want.code)
 			assert.Equal(t, body, tt.want.response)
 			assert.Equal(t, location, tt.want.location)
 			assert.Equal(t, contentType, tt.want.contentType)
+			err := resp.Body.Close()
+			if err != nil {
+				log.Println("Response body close error: ", err.Error())
+			}
 		})
 	}
 }
