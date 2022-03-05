@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,10 +23,27 @@ type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
+func DecompressMiddleware(r *http.Request) io.Reader {
+	var reader io.Reader
+
+	if r.Header.Get(`Content-Encoding`) == `gzip` {
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			return nil
+		}
+		reader = gz
+		defer gz.Close()
+	} else {
+		reader = r.Body
+	}
+	return reader
+}
+
 func HandleURL(w http.ResponseWriter, r *http.Request) {
 	shorten := ShortenRequest{}
+	reader := DecompressMiddleware(r)
 
-	if err := json.NewDecoder(r.Body).Decode(&shorten); err != nil {
+	if err := json.NewDecoder(reader).Decode(&shorten); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -61,7 +80,8 @@ func GetURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func SaveShortURL(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+	reader := DecompressMiddleware(r)
+	body, err := ioutil.ReadAll(reader)
 
 	if err != nil {
 		log.Println(common.ErrBodyReadError)
