@@ -29,7 +29,7 @@ func getJSONRequest() *bytes.Buffer {
 }
 
 func getJSONResponse() string {
-	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId)}
+	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID)}
 	b, err := json.Marshal(res)
 
 	if err != nil {
@@ -85,7 +85,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "POST 200",
 			args: args{http.MethodPost, "/", strings.NewReader(common.TestURL)},
-			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortId), "", "text/plain; charset=utf-8"},
+			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST 400 Empty body",
@@ -94,7 +94,7 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name: "GET 307",
-			args: args{http.MethodGet, "/" + common.TestShortId, nil},
+			args: args{http.MethodGet, "/" + common.TestShortID, nil},
 			want: want{http.StatusTemporaryRedirect, "", common.TestURL, ""},
 		},
 		{

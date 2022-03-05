@@ -45,14 +45,14 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 		{
 			"OK",
 			fields{
-				Items:       map[string]string{common.TestURL: common.TestShortId},
+				Items:       map[string]string{common.TestURL: common.TestShortID},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
 			args{common.TestURL},
-			common.TestShortId,
+			common.TestShortID,
 			assert.NoError,
 		},
 	}
@@ -97,13 +97,13 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 		{
 			"OK",
 			fields{
-				Items:       map[string]string{common.TestShortId: common.TestURL},
+				Items:       map[string]string{common.TestShortID: common.TestURL},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
-			args{common.TestShortId},
+			args{common.TestShortID},
 			common.TestURL,
 			assert.NoError,
 		},
