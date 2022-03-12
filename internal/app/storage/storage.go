@@ -1,10 +1,12 @@
 package storage
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
+	"github.com/jackc/pgx/v4"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,6 +20,7 @@ type UserItem struct {
 type Database struct {
 	Items       map[string]string
 	UserItems   map[string][]*UserItem //map[userID][]UserItem
+	PGConn      *pgx.Conn
 	Filename    string
 	StoreInFile bool
 	Producer    *producer
@@ -126,7 +129,16 @@ func (db *Database) RestoreItems() error {
 
 }
 
+func (db *Database) Ping() error {
+	return db.PGConn.Ping(context.Background())
+}
+
 func InitDB() (*Database, error) {
+
+	conn, err := pgx.Connect(context.Background(), common.Cfg.DatabaseDSN)
+	if err != nil {
+		log.Printf("Unable to connect to database: %v\n", err)
+	}
 
 	storeInFile := len(common.Cfg.FileStoragePath) > 0
 
@@ -135,6 +147,7 @@ func InitDB() (*Database, error) {
 		Items:       make(map[string]string),
 		UserItems:   make(map[string][]*UserItem),
 		Filename:    common.Cfg.FileStoragePath,
+		PGConn:      conn,
 	}
 
 	if storeInFile {
@@ -158,7 +171,7 @@ func InitDB() (*Database, error) {
 	if storeInFile {
 		err := DB.RestoreItems()
 		if err != nil {
-			log.Println("Error db file decode")
+			log.Println("Error db file decode: ", err)
 		}
 
 	}

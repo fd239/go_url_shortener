@@ -24,6 +24,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			if err != nil {
 				log.Println(fmt.Sprintf("Crypt new user encrypt error: %v", err))
 				http.Error(w, "Encrypt error", http.StatusBadRequest)
+				return
 			}
 
 			cookie := &http.Cookie{

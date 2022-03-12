@@ -56,6 +56,7 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())
 		log.Println(errString)
 		http.Error(w, errString, http.StatusBadRequest)
+		return
 	}
 
 	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, url)}
@@ -87,6 +88,7 @@ func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	if len(userURLs) == 0 {
 		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusNoContent)
+		return
 	}
 
 	var baseURLItems []*storage.UserItem
@@ -99,6 +101,7 @@ func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("user URLs marshall error: ", err.Error())
 		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -129,8 +132,21 @@ func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())
 		log.Println(errString)
 		http.Error(w, errString, http.StatusBadRequest)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)))
+}
+
+func Ping(w http.ResponseWriter, r *http.Request) {
+	err := Store.Ping()
+
+	if err != nil {
+		log.Printf("DB ping error: %v\n", err)
+		http.Error(w, common.ErrPing.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

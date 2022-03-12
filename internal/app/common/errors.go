@@ -8,4 +8,5 @@ var (
 	ErrBodyReadError = errors.New("body read error")
 	ErrUserCookie    = errors.New("no user cookie")
 	ErrNoUserURLs    = errors.New("no user URLs")
+	ErrPing          = errors.New("database ping error")
 )
