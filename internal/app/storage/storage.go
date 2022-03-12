@@ -159,7 +159,6 @@ func InitDB() (*Database, error) {
 		err := DB.RestoreItems()
 		if err != nil {
 			log.Println("Error db file decode")
-			return nil, err
 		}
 
 	}
