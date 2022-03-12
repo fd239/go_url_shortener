@@ -10,8 +10,14 @@ import (
 	"path/filepath"
 )
 
+type UserItem struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
 type Database struct {
 	Items       map[string]string
+	UserItems   map[string][]*UserItem //map[userID][]UserItem
 	Filename    string
 	StoreInFile bool
 	Producer    *producer
@@ -78,21 +84,26 @@ func (p *producer) Close() error {
 	return p.file.Close()
 }
 
-func (db *Database) Insert(item string) (string, error) {
-	var err error
+func (db *Database) Insert(item string, userID string) (string, error) {
 	data := []byte(item)
 	hashString := fmt.Sprintf("%x", md5.Sum(data))
 
 	db.Items[hashString] = item
 
+	db.UserItems[userID] = append(db.UserItems[userID], &UserItem{
+		ShortURL:    hashString,
+		OriginalURL: item,
+	})
+
 	if db.StoreInFile {
 		err := db.SaveItems()
 		if err != nil {
 			log.Println("DB Save items error: ", err.Error())
+			return "", err
 		}
 	}
 
-	return hashString, err
+	return hashString, nil
 
 }
 
@@ -104,6 +115,15 @@ func (db *Database) Get(id string) (string, error) {
 	return "", common.ErrNoURLInMap
 }
 
+func (db *Database) GetUserURL(userID string) ([]byte, error) {
+	if _, ok := db.UserItems[userID]; !ok {
+		return []byte(""), nil
+	}
+
+	res, err := json.Marshal(db.UserItems[userID])
+	return res, err
+}
+
 func (db *Database) RestoreItems() error {
 	err := db.Consumer.decoder.Decode(&db.Items)
 
@@ -112,12 +132,13 @@ func (db *Database) RestoreItems() error {
 }
 
 func InitDB() (*Database, error) {
-	var err error
+
 	storeInFile := len(common.Cfg.FileStoragePath) > 0
 
 	DB := Database{
 		StoreInFile: storeInFile,
 		Items:       make(map[string]string),
+		UserItems:   make(map[string][]*UserItem),
 		Filename:    common.Cfg.FileStoragePath,
 	}
 
@@ -143,10 +164,11 @@ func InitDB() (*Database, error) {
 		err := DB.RestoreItems()
 		if err != nil {
 			log.Println("Error db file decode")
+			return nil, err
 		}
 
 	}
 
-	return &DB, err
+	return &DB, nil
 
 }

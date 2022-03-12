@@ -13,6 +13,8 @@ type Config struct {
 
 var Cfg Config
 
+var SecretKey = []byte("passphrasewhichneedstobe32bytes!")
+
 func InitConfig() error {
 	err := env.Parse(&Cfg)
 

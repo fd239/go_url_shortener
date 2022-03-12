@@ -7,6 +7,7 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/context"
 	"io"
 	"io/ioutil"
 	"log"
@@ -48,7 +49,8 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := Store.Insert(shorten.URL)
+	userID := context.Get(r, "userID")
+	url, err := Store.Insert(shorten.URL, fmt.Sprintf("%v", userID))
 
 	if err != nil {
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())
@@ -79,6 +81,24 @@ func GetURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+func GetUserURLs(w http.ResponseWriter, r *http.Request) {
+	userID := context.Get(r, "userID")
+	userURLs, err := Store.GetUserURL(fmt.Sprintf("%v", userID))
+
+	if err != nil {
+		log.Println("GetUserURL error: ", err.Error())
+		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusBadRequest)
+	}
+
+	if len(userURLs) == 0 {
+		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusNoContent)
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Add("Accept", "application/json")
+	w.Write(userURLs)
+}
+
 func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 	reader := DecompressMiddleware(r)
 	body, err := ioutil.ReadAll(reader)
@@ -95,7 +115,8 @@ func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := Store.Insert(string(body))
+	userID := context.Get(r, "userID")
+	shortURL, err := Store.Insert(string(body), fmt.Sprintf("%v", userID))
 
 	if err != nil {
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())

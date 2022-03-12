@@ -3,6 +3,7 @@ package server
 import (
 	"compress/gzip"
 	"github.com/fd239/go_url_shortener/internal/app/handlers"
+	"github.com/fd239/go_url_shortener/internal/app/middleware"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -50,10 +51,13 @@ func gzipHandle(next http.Handler) http.Handler {
 
 func CreateRouter() *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(middleware.AuthMiddleware)
+	//r.Use(middleware.DecompressMiddleware)
 	r.Post("/api/shorten", handlers.HandleURL)
+	r.Get("/api/user/urls", handlers.GetUserURLs)
 	r.Get("/{id}", handlers.GetURL)
 	r.Post("/", handlers.SaveShortURL)
-	//r.Middlewares(middleware.Compress())
+
 	return r
 }
 
