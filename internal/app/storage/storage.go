@@ -115,13 +115,8 @@ func (db *Database) Get(id string) (string, error) {
 	return "", common.ErrNoURLInMap
 }
 
-func (db *Database) GetUserURL(userID string) ([]byte, error) {
-	if _, ok := db.UserItems[userID]; !ok {
-		return []byte(""), nil
-	}
-
-	res, err := json.Marshal(db.UserItems[userID])
-	return res, err
+func (db *Database) GetUserURL(userID string) []*UserItem {
+	return db.UserItems[userID]
 }
 
 func (db *Database) RestoreItems() error {

@@ -83,20 +83,27 @@ func GetURL(w http.ResponseWriter, r *http.Request) {
 
 func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userID := context.Get(r, "userID")
-	userURLs, err := Store.GetUserURL(fmt.Sprintf("%v", userID))
-
-	if err != nil {
-		log.Println("GetUserURL error: ", err.Error())
-		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusBadRequest)
-	}
+	userURLs := Store.GetUserURL(fmt.Sprintf("%v", userID))
 
 	if len(userURLs) == 0 {
 		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusNoContent)
 	}
 
+	var baseUrlItems []*storage.UserItem
+	for _, v := range userURLs {
+		baseUrlItems = append(baseUrlItems, &storage.UserItem{OriginalURL: v.OriginalURL, ShortURL: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, v.ShortURL)})
+	}
+
+	userURLsJson, err := json.Marshal(baseUrlItems)
+
+	if err != nil {
+		log.Println("user URLs marshall error: ", err.Error())
+		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusBadRequest)
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Header().Add("Accept", "application/json")
-	w.Write(userURLs)
+	w.Write(userURLsJson)
 }
 
 func SaveShortURL(w http.ResponseWriter, r *http.Request) {
