@@ -53,8 +53,8 @@ func CreateRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.AuthMiddleware)
 	//r.Use(middleware.DecompressMiddleware)
-	r.Post("/api/shorten", handlers.HandleURL)
 	r.Get("/api/user/urls", handlers.GetUserURLs)
+	r.Post("/api/shorten", handlers.HandleURL)
 	r.Get("/{id}", handlers.GetURL)
 	r.Post("/", handlers.SaveShortURL)
 

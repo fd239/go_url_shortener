@@ -60,9 +60,6 @@ func initCrypt() error {
 	}
 
 	nonce := common.SecretKey[len(common.SecretKey)-aesgcm.NonceSize():]
-	if err != nil {
-		return err
-	}
 
 	CryptURL = &CipherCrypt{
 		aesGCM: aesgcm,
