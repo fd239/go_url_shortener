@@ -13,8 +13,8 @@ import (
 )
 
 type UserItem struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
+	ShortURL    string `json:"short_url" db:"short_url"`
+	OriginalURL string `json:"original_url" db:"original_url"`
 }
 
 type Database struct {
@@ -23,6 +23,7 @@ type Database struct {
 	PGConn      *pgx.Conn
 	Filename    string
 	StoreInFile bool
+	StoreInPg   bool
 	Producer    *producer
 	Consumer    *consumer
 }
@@ -106,11 +107,34 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 		}
 	}
 
+	if db.StoreInPg {
+		if _, err := db.PGConn.Exec(context.Background(), `insert into short_url(original_url, short_url) values ($1, $2)`, item, hashString); err != nil {
+			log.Println("PG Save items error: ", err.Error())
+			return "", err
+		}
+
+		if _, err := db.PGConn.Exec(context.Background(), `insert into user_short_url(original_url, short_url, userID) values ($1, $2, $3)`, item, hashString, userID); err != nil {
+			log.Println("PG Save user short url error: ", err.Error())
+			return "", err
+		}
+
+	}
+
 	return hashString, nil
 
 }
 
 func (db *Database) Get(id string) (string, error) {
+	if db.StoreInPg {
+		var url string
+		err := db.PGConn.QueryRow(context.Background(), "select original_url from short_url where short_url=$1", id).Scan(&url)
+		if err != nil {
+			log.Println("PG Get short url query error: ", err.Error())
+			return "", err
+		}
+		return url, nil
+	}
+
 	if result, ok := db.Items[id]; ok {
 		return result, nil
 	}
@@ -119,6 +143,36 @@ func (db *Database) Get(id string) (string, error) {
 }
 
 func (db *Database) GetUserURL(userID string) []*UserItem {
+	if db.StoreInPg {
+		userURLs := make([]*UserItem, 0)
+		rows, err := db.PGConn.Query(context.Background(), "select original_url, short_url from user_short_url where userID=$1", userID)
+
+		if err != nil {
+			log.Println("PG Get user urls query error: ", err.Error())
+			return nil
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			userItem := &UserItem{}
+			err = rows.Scan(&userItem.OriginalURL, &userItem.ShortURL)
+			if err != nil {
+				log.Println("PG Get user urls row scan error: ", err.Error())
+			}
+			userURLs = append(userURLs, userItem)
+		}
+
+		err = rows.Err()
+		if err != nil {
+			log.Println("PG Get user urls rows err error: ", err.Error())
+			return nil
+		}
+
+		return userURLs
+
+	}
+
 	return db.UserItems[userID]
 }
 
@@ -135,19 +189,15 @@ func (db *Database) Ping() error {
 
 func InitDB() (*Database, error) {
 
-	conn, err := pgx.Connect(context.Background(), common.Cfg.DatabaseDSN)
-	if err != nil {
-		log.Printf("Unable to connect to database: %v\n", err)
-	}
-
+	storeInPg := len(common.Cfg.DatabaseDSN) > 0
 	storeInFile := len(common.Cfg.FileStoragePath) > 0
 
 	DB := Database{
 		StoreInFile: storeInFile,
+		StoreInPg:   storeInPg,
 		Items:       make(map[string]string),
 		UserItems:   make(map[string][]*UserItem),
 		Filename:    common.Cfg.FileStoragePath,
-		PGConn:      conn,
 	}
 
 	if storeInFile {
@@ -166,14 +216,30 @@ func InitDB() (*Database, error) {
 		DB.Producer = dataBaseProducer
 		DB.Consumer = dataBaseConsumer
 
-	}
-
-	if storeInFile {
-		err := DB.RestoreItems()
+		err = DB.RestoreItems()
 		if err != nil {
-			log.Println("Error db file decode: ", err)
+			log.Println("Error db file decode: ", err.Error())
 		}
 
+	}
+
+	if storeInPg {
+		conn, err := pgx.Connect(context.Background(), common.Cfg.DatabaseDSN)
+		if err != nil {
+			log.Printf("Unable to connect to database: %v\n", err)
+		}
+
+		DB.PGConn = conn
+
+		_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL)`)
+		if err != nil {
+			log.Println("short url table creation error: ", err.Error())
+		}
+
+		_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS user_short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, userID varchar(50))`)
+		if err != nil {
+			log.Println("user short url table creation error: ", err.Error())
+		}
 	}
 
 	return &DB, nil

@@ -9,7 +9,7 @@ type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"  envDefault:"localhost:8080"`
 	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	DatabaseDSN     string `env:"DATABASE_DSN" envDefault:"postgres://youruser:yourpass@localhost:5432/pgx_test"`
+	DatabaseDSN     string `env:"DATABASE_DSN" envDefault:"postgres://fd239:fd239@localhost:5432/short_url"`
 }
 
 var Cfg Config
