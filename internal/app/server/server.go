@@ -55,6 +55,7 @@ func CreateRouter() *chi.Mux {
 	//r.Use(middleware.DecompressMiddleware)
 	r.Get("/ping", handlers.Ping)
 	r.Get("/api/user/urls", handlers.GetUserURLs)
+	r.Post("/api/shorten/batch", handlers.BatchURLs)
 	r.Post("/api/shorten", handlers.HandleURL)
 	r.Get("/{id}", handlers.GetURL)
 	r.Post("/", handlers.SaveShortURL)

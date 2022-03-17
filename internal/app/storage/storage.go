@@ -12,6 +12,17 @@ import (
 	"path/filepath"
 )
 
+type BatchItemRequest struct {
+	CorrelationID string `json:"correlation_id" db:"correlation_id"`
+	ShortURL      string `json:"short_url" db:"short_url"`
+	OriginalURL   string `json:"original_url" db:"original_url"`
+}
+
+type BatchItemResponse struct {
+	CorrelationID string `json:"correlation_id" db:"correlation_id"`
+	ShortURL      string `json:"short_url" db:"short_url"`
+}
+
 type UserItem struct {
 	ShortURL    string `json:"short_url" db:"short_url"`
 	OriginalURL string `json:"original_url" db:"original_url"`
@@ -88,9 +99,13 @@ func (p *producer) Close() error {
 	return p.file.Close()
 }
 
-func (db *Database) Insert(item string, userID string) (string, error) {
+func (db *Database) getShortItem(item string) string {
 	data := []byte(item)
-	hashString := fmt.Sprintf("%x", md5.Sum(data))
+	return fmt.Sprintf("%x", md5.Sum(data))
+}
+
+func (db *Database) Insert(item string, userID string) (string, error) {
+	hashString := db.getShortItem(item)
 
 	db.Items[hashString] = item
 
@@ -187,6 +202,46 @@ func (db *Database) Ping() error {
 	return db.PGConn.Ping(context.Background())
 }
 
+func (db *Database) BatchItems(items []BatchItemRequest) ([]BatchItemResponse, error) {
+	ctx := context.Background()
+	tx, err := db.PGConn.Begin(ctx)
+	if err != nil {
+		log.Println("PG Context begin error: ", err.Error())
+		return nil, err
+	}
+
+	// New batch
+	batch := &pgx.Batch{}
+	var batchItemsResponse []BatchItemResponse
+
+	for _, item := range items {
+
+		batchItemResponse := BatchItemResponse{}
+
+		shortURL := db.getShortItem(item.OriginalURL)
+
+		batch.Queue("INSERT INTO batch_url (correlation_id, short_url, original_url) VALUES ($1, $2, $3);", item.CorrelationID, shortURL, item.OriginalURL)
+
+		batchItemResponse.CorrelationID = item.CorrelationID
+		batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
+
+		batchItemsResponse = append(batchItemsResponse, batchItemResponse)
+
+	}
+
+	batchResults := tx.SendBatch(ctx, batch)
+
+	var qerr error
+	var rows pgx.Rows
+	for qerr == nil {
+		rows, qerr = batchResults.Query()
+		rows.Close()
+	}
+
+	return batchItemsResponse, tx.Commit(ctx)
+
+}
+
 func InitDB() (*Database, error) {
 
 	storeInPg := len(common.Cfg.DatabaseDSN) > 0
@@ -240,6 +295,12 @@ func InitDB() (*Database, error) {
 		if err != nil {
 			log.Println("user short url table creation error: ", err.Error())
 		}
+
+		_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS batch_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, correlation_id varchar(36) NOT NULL)`)
+		if err != nil {
+			log.Println("user short url table creation error: ", err.Error())
+		}
+
 	}
 
 	return &DB, nil

@@ -40,6 +40,44 @@ func DecompressMiddleware(r *http.Request) io.Reader {
 	return reader
 }
 
+func BatchURLs(w http.ResponseWriter, r *http.Request) {
+	reader := DecompressMiddleware(r)
+	body, err := ioutil.ReadAll(reader)
+
+	if err != nil {
+		log.Println(common.ErrBodyReadError)
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(body) == 0 {
+		log.Println(common.ErrEmptyBody)
+		http.Error(w, common.ErrEmptyBody.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var batchItems []storage.BatchItemRequest
+	err = json.Unmarshal(body, &batchItems)
+
+	if err != nil {
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
+		return
+	}
+
+	batchItemsResponse, batchErr := Store.BatchItems(batchItems)
+
+	if batchErr != nil {
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(batchItemsResponse)
+
+}
+
 func HandleURL(w http.ResponseWriter, r *http.Request) {
 	shorten := ShortenRequest{}
 	reader := DecompressMiddleware(r)
