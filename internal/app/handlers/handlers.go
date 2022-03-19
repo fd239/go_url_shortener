@@ -3,6 +3,7 @@ package handlers
 import (
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
@@ -168,6 +169,11 @@ func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 	shortURL, err := Store.Insert(string(body), fmt.Sprintf("%v", userID))
 
 	if err != nil {
+		if errors.Is(err, common.ErrOriginalURLConflict) {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())
 		log.Println(errString)
 		http.Error(w, errString, http.StatusBadRequest)

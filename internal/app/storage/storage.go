@@ -14,13 +14,13 @@ import (
 )
 
 type BatchItemRequest struct {
-	CorrelationID string `json:"correlation_id" db:"correlation_id"`
+	CorrelationID string `json:"correlation_id" db:"id"`
 	ShortURL      string `json:"short_url" db:"short_url"`
 	OriginalURL   string `json:"original_url" db:"original_url"`
 }
 
 type BatchItemResponse struct {
-	CorrelationID string `json:"correlation_id" db:"correlation_id"`
+	CorrelationID string `json:"correlation_id" db:"id"`
 	ShortURL      string `json:"short_url" db:"short_url"`
 }
 
@@ -126,9 +126,19 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 	if db.StoreInPg {
 
 		correlationId := uuid.NewString()
-		if _, err := db.PGConn.Exec(context.Background(), `insert into short_url(original_url, short_url, correlation_id, user_id) values ($1, $2, $3, $4)`, item, hashString, correlationId, userID); err != nil {
+		rows, err := db.PGConn.Query(context.Background(), `insert into short_url(original_url, short_url, id, user_id) values ($1, $2, $3, $4) ON CONFLICT (original_url) DO NOTHING RETURNING original_url;`, item, hashString, correlationId, userID)
+		if err != nil {
 			log.Println("PG Save items error: ", err.Error())
 			return "", err
+		}
+
+		err = rows.Err()
+		if err != nil {
+			return "", err
+		}
+
+		if !rows.Next() {
+			return "", common.ErrOriginalURLConflict
 		}
 
 	}
@@ -218,7 +228,7 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 
 		shortURL := db.getShortItem(item.OriginalURL)
 
-		batch.Queue("INSERT INTO short_url (correlation_id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4);", item.CorrelationID, shortURL, item.OriginalURL, userID)
+		batch.Queue("INSERT INTO short_url (id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;", item.CorrelationID, shortURL, item.OriginalURL, userID)
 
 		batchItemResponse.CorrelationID = item.CorrelationID
 		batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
@@ -284,7 +294,7 @@ func InitDB() (*Database, error) {
 
 		DB.PGConn = conn
 
-		sqlStatement := `CREATE TABLE IF NOT EXISTS short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, user_id varchar(50), correlation_id varchar(36) NOT NULL)`
+		sqlStatement := `CREATE TABLE IF NOT EXISTS short_url (id varchar(36) PRIMARY KEY NOT NULL, original_url varchar(150) UNIQUE NOT NULL, short_url varchar(50) NOT NULL, user_id varchar(50))`
 
 		_, err = DB.PGConn.Exec(context.Background(), sqlStatement)
 		if err != nil {
