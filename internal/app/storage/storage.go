@@ -131,11 +131,6 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 			return "", err
 		}
 
-		//if _, err := db.PGConn.Exec(context.Background(), `insert into user_short_url(original_url, short_url, userID) values ($1, $2, $3)`, item, hashString, userID); err != nil {
-		//	log.Println("PG Save user short url error: ", err.Error())
-		//	return "", err
-		//}
-
 	}
 
 	return hashString, nil
@@ -295,16 +290,6 @@ func InitDB() (*Database, error) {
 		if err != nil {
 			log.Println("short url table creation error: ", err.Error())
 		}
-
-		//_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS user_short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, userID varchar(50))`)
-		//if err != nil {
-		//	log.Println("user short url table creation error: ", err.Error())
-		//}
-		//
-		//_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS batch_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, correlation_id varchar(36) NOT NULL)`)
-		//if err != nil {
-		//	log.Println("user short url table creation error: ", err.Error())
-		//}
 
 	}
 
