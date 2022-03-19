@@ -46,7 +46,7 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(reader)
 
 	if err != nil {
-		log.Println(common.ErrBodyReadError)
+		log.Printf("batch urls body read error: %v\n", err)
 		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
 		return
 	}
@@ -76,7 +76,10 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	json.NewEncoder(w).Encode(batchItemsResponse)
+	if err = json.NewEncoder(w).Encode(batchItemsResponse); err != nil {
+		log.Printf("json.Encode: %v\n", err)
+		http.Error(w, common.ErrResponseEncode.Error(), http.StatusBadRequest)
+	}
 
 }
 
@@ -85,7 +88,7 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 	reader := DecompressMiddleware(r)
 
 	if err := json.NewDecoder(reader).Decode(&shorten); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, common.ErrUnableToFindURL.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -94,7 +97,7 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())
-		log.Println(errString)
+		log.Printf("json.Decode: %v\n", err)
 		http.Error(w, errString, http.StatusBadRequest)
 		return
 	}
@@ -103,7 +106,10 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	json.NewEncoder(w).Encode(response)
+	if err = json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("json.Encode: %v\n", err)
+		http.Error(w, common.ErrResponseEncode.Error(), http.StatusBadRequest)
+	}
 
 }
 
@@ -113,8 +119,8 @@ func GetURL(w http.ResponseWriter, r *http.Request) {
 	url, err := Store.Get(urlID)
 
 	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Store GET error: %v\n", err)
+		http.Error(w, common.ErrUnableToFindURL.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -139,7 +145,7 @@ func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userURLsJSON, err := json.Marshal(baseURLItems)
 
 	if err != nil {
-		log.Println("user URLs marshall error: ", err.Error())
+		log.Printf("user URLs marshall error: %v\n", err)
 		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusBadRequest)
 		return
 	}
@@ -174,7 +180,7 @@ func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
-		errString := fmt.Sprintf("Save short route error: %s", err.Error())
+		errString := fmt.Sprintf("Save short route error: %v\n", err)
 		log.Println(errString)
 		http.Error(w, errString, http.StatusBadRequest)
 		return

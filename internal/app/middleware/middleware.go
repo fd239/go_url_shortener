@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/fd239/go_url_shortener/internal/app/crypt"
 	"github.com/google/uuid"
 	"github.com/gorilla/context"
@@ -23,7 +24,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			encryptedUserID, err := crypt.Encrypt(decryptedUserID)
 			if err != nil {
 				log.Println(fmt.Sprintf("Crypt new user encrypt error: %v", err))
-				http.Error(w, "Encrypt error", http.StatusBadRequest)
+				http.Error(w, common.ErrUserCookie.Error(), http.StatusBadRequest)
 				return
 			}
 

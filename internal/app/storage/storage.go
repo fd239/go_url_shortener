@@ -125,8 +125,8 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 
 	if db.StoreInPg {
 
-		correlationId := uuid.NewString()
-		rows, err := db.PGConn.Query(context.Background(), `insert into short_url(original_url, short_url, id, user_id) values ($1, $2, $3, $4) ON CONFLICT (original_url) DO NOTHING RETURNING original_url;`, item, hashString, correlationId, userID)
+		correlationID := uuid.NewString()
+		rows, err := db.PGConn.Query(context.Background(), `insert into short_url(original_url, short_url, id, user_id) values ($1, $2, $3, $4) ON CONFLICT (original_url) DO NOTHING RETURNING original_url;`, item, hashString, correlationID, userID)
 
 		if err != nil {
 			log.Println("PG Save items error: ", err.Error())

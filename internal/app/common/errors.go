@@ -3,6 +3,7 @@ package common
 import "errors"
 
 var (
+	ErrUnableToFindURL     = errors.New("unable to find original url")
 	ErrNoURLInMap          = errors.New("no URL in map")
 	ErrEmptyBody           = errors.New("empty body")
 	ErrBodyReadError       = errors.New("body read error")
@@ -10,4 +11,5 @@ var (
 	ErrNoUserURLs          = errors.New("no user URLs")
 	ErrPing                = errors.New("database ping error")
 	ErrOriginalURLConflict = errors.New("original url postgresql save conflict")
+	ErrResponseEncode      = errors.New("response encode error")
 )
