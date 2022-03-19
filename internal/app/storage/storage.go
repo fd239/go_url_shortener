@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"log"
 	"os"
@@ -123,15 +124,17 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 	}
 
 	if db.StoreInPg {
-		if _, err := db.PGConn.Exec(context.Background(), `insert into short_url(original_url, short_url) values ($1, $2)`, item, hashString); err != nil {
+
+		correlationId := uuid.NewString()
+		if _, err := db.PGConn.Exec(context.Background(), `insert into short_url(original_url, short_url, correlation_id, user_id) values ($1, $2, $3, $4)`, item, hashString, correlationId, userID); err != nil {
 			log.Println("PG Save items error: ", err.Error())
 			return "", err
 		}
 
-		if _, err := db.PGConn.Exec(context.Background(), `insert into user_short_url(original_url, short_url, userID) values ($1, $2, $3)`, item, hashString, userID); err != nil {
-			log.Println("PG Save user short url error: ", err.Error())
-			return "", err
-		}
+		//if _, err := db.PGConn.Exec(context.Background(), `insert into user_short_url(original_url, short_url, userID) values ($1, $2, $3)`, item, hashString, userID); err != nil {
+		//	log.Println("PG Save user short url error: ", err.Error())
+		//	return "", err
+		//}
 
 	}
 
@@ -160,7 +163,7 @@ func (db *Database) Get(id string) (string, error) {
 func (db *Database) GetUserURL(userID string) []*UserItem {
 	if db.StoreInPg {
 		userURLs := make([]*UserItem, 0)
-		rows, err := db.PGConn.Query(context.Background(), "select original_url, short_url from user_short_url where userID=$1", userID)
+		rows, err := db.PGConn.Query(context.Background(), "select original_url, short_url from short_url where user_id=$1", userID)
 
 		if err != nil {
 			log.Println("PG Get user urls query error: ", err.Error())
@@ -202,7 +205,7 @@ func (db *Database) Ping() error {
 	return db.PGConn.Ping(context.Background())
 }
 
-func (db *Database) BatchItems(items []BatchItemRequest) ([]BatchItemResponse, error) {
+func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]BatchItemResponse, error) {
 	ctx := context.Background()
 	tx, err := db.PGConn.Begin(ctx)
 	if err != nil {
@@ -220,7 +223,7 @@ func (db *Database) BatchItems(items []BatchItemRequest) ([]BatchItemResponse, e
 
 		shortURL := db.getShortItem(item.OriginalURL)
 
-		batch.Queue("INSERT INTO batch_url (correlation_id, short_url, original_url) VALUES ($1, $2, $3);", item.CorrelationID, shortURL, item.OriginalURL)
+		batch.Queue("INSERT INTO short_url (correlation_id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4);", item.CorrelationID, shortURL, item.OriginalURL, userID)
 
 		batchItemResponse.CorrelationID = item.CorrelationID
 		batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
@@ -286,20 +289,22 @@ func InitDB() (*Database, error) {
 
 		DB.PGConn = conn
 
-		_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL)`)
+		sqlStatement := `CREATE TABLE IF NOT EXISTS short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, user_id varchar(50), correlation_id varchar(36) NOT NULL)`
+
+		_, err = DB.PGConn.Exec(context.Background(), sqlStatement)
 		if err != nil {
 			log.Println("short url table creation error: ", err.Error())
 		}
 
-		_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS user_short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, userID varchar(50))`)
-		if err != nil {
-			log.Println("user short url table creation error: ", err.Error())
-		}
-
-		_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS batch_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, correlation_id varchar(36) NOT NULL)`)
-		if err != nil {
-			log.Println("user short url table creation error: ", err.Error())
-		}
+		//_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS user_short_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, userID varchar(50))`)
+		//if err != nil {
+		//	log.Println("user short url table creation error: ", err.Error())
+		//}
+		//
+		//_, err = DB.PGConn.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS batch_url (original_url varchar(150) NOT NULL, short_url varchar(50) NOT NULL, correlation_id varchar(36) NOT NULL)`)
+		//if err != nil {
+		//	log.Println("user short url table creation error: ", err.Error())
+		//}
 
 	}
 

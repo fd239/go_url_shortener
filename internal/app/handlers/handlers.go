@@ -64,7 +64,8 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	batchItemsResponse, batchErr := Store.BatchItems(batchItems)
+	userID := context.Get(r, "userID")
+	batchItemsResponse, batchErr := Store.BatchItems(batchItems, fmt.Sprintf("%v", userID))
 
 	if batchErr != nil {
 		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
@@ -72,7 +73,7 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 
 	json.NewEncoder(w).Encode(batchItemsResponse)
 
