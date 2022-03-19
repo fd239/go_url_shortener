@@ -127,15 +127,13 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 
 		correlationId := uuid.NewString()
 		rows, err := db.PGConn.Query(context.Background(), `insert into short_url(original_url, short_url, id, user_id) values ($1, $2, $3, $4) ON CONFLICT (original_url) DO NOTHING RETURNING original_url;`, item, hashString, correlationId, userID)
+
 		if err != nil {
 			log.Println("PG Save items error: ", err.Error())
 			return "", err
 		}
 
-		err = rows.Err()
-		if err != nil {
-			return "", err
-		}
+		defer rows.Close()
 
 		if !rows.Next() {
 			return "", common.ErrOriginalURLConflict
