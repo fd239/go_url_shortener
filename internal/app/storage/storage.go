@@ -128,7 +128,8 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 
 	if db.StoreInPg {
 		rowID := uuid.NewString()
-		stmt := `WITH e AS (
+		stmt :=
+			`WITH e AS (
 			INSERT INTO short_url (original_url, short_url, id, user_id)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (original_url) DO NOTHING
@@ -159,7 +160,6 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 	}
 
 	return hashString, nil
-
 }
 
 func (db *Database) Get(id string) (string, error) {
@@ -216,9 +216,7 @@ func (db *Database) GetUserURL(userID string) []*UserItem {
 
 func (db *Database) RestoreItems() error {
 	err := db.Consumer.decoder.Decode(&db.Items)
-
 	return err
-
 }
 
 func (db *Database) Ping() error {
@@ -238,7 +236,6 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 	var batchItemsResponse []BatchItemResponse
 
 	for _, item := range items {
-
 		batchItemResponse := BatchItemResponse{}
 
 		shortURL := db.getShortItem(item.OriginalURL)
@@ -249,7 +246,6 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 		batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
 
 		batchItemsResponse = append(batchItemsResponse, batchItemResponse)
-
 	}
 
 	batchResults := tx.SendBatch(ctx, batch)
@@ -266,7 +262,6 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 }
 
 func InitDB() (*Database, error) {
-
 	storeInPg := len(common.Cfg.DatabaseDSN) > 0
 	storeInFile := len(common.Cfg.FileStoragePath) > 0
 
@@ -309,9 +304,17 @@ func InitDB() (*Database, error) {
 
 		DB.PGConn = conn
 
-		sqlStatement := `CREATE TABLE IF NOT EXISTS short_url (id varchar(36) PRIMARY KEY NOT NULL, original_url varchar(150) UNIQUE NOT NULL, short_url varchar(50) NOT NULL, user_id varchar(50))`
+		stmt :=
+			`CREATE TABLE IF NOT EXISTS short_url
+		(
+			id           varchar(36) PRIMARY KEY NOT NULL,
+			original_url varchar(150) UNIQUE     NOT NULL,
+			short_url    varchar(50)             NOT NULL,
+			user_id      varchar(50)
+		)`
 
-		_, err = DB.PGConn.Exec(context.Background(), sqlStatement)
+		_, err = DB.PGConn.Exec(context.Background(), stmt)
+
 		if err != nil {
 			log.Println("short url table creation error: ", err.Error())
 		}
