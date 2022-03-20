@@ -176,8 +176,8 @@ func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, common.ErrOriginalURLConflict) {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusConflict)
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)))
 			return
 		}
 		errString := fmt.Sprintf("Save short route error: %v\n", err)
