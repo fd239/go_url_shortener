@@ -4,7 +4,6 @@ import "errors"
 
 var (
 	ErrUnableToFindURL     = errors.New("unable to find original url")
-	ErrNoURLInMap          = errors.New("no URL in map")
 	ErrEmptyBody           = errors.New("empty body")
 	ErrBodyReadError       = errors.New("body read error")
 	ErrUserCookie          = errors.New("no user cookie")

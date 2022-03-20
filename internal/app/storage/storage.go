@@ -13,6 +13,9 @@ import (
 	"path/filepath"
 )
 
+const PostgreSQLSuccessfull = 100000
+const PostgreSQLDuplicate = 100001
+
 type BatchItemRequest struct {
 	CorrelationID string `json:"correlation_id" db:"id"`
 	ShortURL      string `json:"short_url" db:"short_url"`
@@ -124,10 +127,20 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 	}
 
 	if db.StoreInPg {
-
-		correlationID := uuid.NewString()
-		rows, err := db.PGConn.Query(context.Background(), `insert into short_url(original_url, short_url, id, user_id) values ($1, $2, $3, $4) ON CONFLICT (original_url) DO NOTHING RETURNING original_url;`, item, hashString, correlationID, userID)
-
+		rowID := uuid.NewString()
+		stmt := `WITH e AS (
+			INSERT INTO short_url (original_url, short_url, id, user_id)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (original_url) DO NOTHING
+		RETURNING short_url
+		)
+		SELECT short_url, 100000
+		FROM e
+		UNION ALL
+		SELECT short_url, 100001
+		FROM short_url
+		WHERE original_url=$1;`
+		rows, err := db.PGConn.Query(context.Background(), stmt, item, hashString, rowID, userID)
 		if err != nil {
 			log.Println("PG Save items error: ", err.Error())
 			return "", err
@@ -135,10 +148,14 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 
 		defer rows.Close()
 
-		if !rows.Next() {
-			return "", common.ErrOriginalURLConflict
+		if rows.Next() {
+			shortURL := ""
+			insertResult := 0
+			rows.Scan(&shortURL, &insertResult)
+			if insertResult == PostgreSQLDuplicate {
+				return shortURL, common.ErrOriginalURLConflict
+			}
 		}
-
 	}
 
 	return hashString, nil
@@ -160,7 +177,7 @@ func (db *Database) Get(id string) (string, error) {
 		return result, nil
 	}
 
-	return "", common.ErrNoURLInMap
+	return "", common.ErrUnableToFindURL
 }
 
 func (db *Database) GetUserURL(userID string) []*UserItem {

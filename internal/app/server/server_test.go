@@ -103,7 +103,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "GET 400 No URL in map",
 			args: args{http.MethodGet, "/123", nil},
-			want: want{http.StatusBadRequest, common.ErrNoURLInMap.Error(), "", "text/plain; charset=utf-8"},
+			want: want{http.StatusBadRequest, common.ErrUnableToFindURL.Error(), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST API 200",
