@@ -93,16 +93,21 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := context.Get(r, "userID")
-	url, err := Store.Insert(shorten.URL, fmt.Sprintf("%v", userID))
+	shortURL, err := Store.Insert(shorten.URL, fmt.Sprintf("%v", userID))
 
 	if err != nil {
+		if errors.Is(err, common.ErrOriginalURLConflict) {
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)))
+			return
+		}
 		errString := fmt.Sprintf("Save short route error: %s", err.Error())
 		log.Printf("json.Decode: %v\n", err)
 		http.Error(w, errString, http.StatusBadRequest)
 		return
 	}
 
-	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, url)}
+	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
