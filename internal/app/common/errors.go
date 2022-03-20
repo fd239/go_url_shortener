@@ -11,4 +11,5 @@ var (
 	ErrPing                = errors.New("database ping error")
 	ErrOriginalURLConflict = errors.New("original url postgresql save conflict")
 	ErrResponseEncode      = errors.New("response encode error")
+	ErrGzipRead            = errors.New("gzip read error")
 )

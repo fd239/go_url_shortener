@@ -108,7 +108,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "POST API 200",
 			args: args{http.MethodPost, "/api/shorten", getJSONRequest()},
-			want: want{http.StatusCreated, getJSONResponse(), "", "application/json"},
+			want: want{http.StatusCreated, getJSONResponse(), "", "application/json; charset=UTF-8"},
 		},
 	}
 
@@ -116,7 +116,7 @@ func TestRouter(t *testing.T) {
 	handlers.Store, err = storage.InitDB()
 
 	if err != nil {
-		fmt.Println("Error database init: ", err.Error())
+		fmt.Printf("Error database init: %v\n", err)
 	}
 
 	r := CreateRouter()
@@ -126,13 +126,13 @@ func TestRouter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body, location, contentType := testRequest(t, ts, tt.args.method, tt.args.target, tt.args.body)
-			assert.Equal(t, resp.StatusCode, tt.want.code)
-			assert.Equal(t, body, tt.want.response)
-			assert.Equal(t, location, tt.want.location)
-			assert.Equal(t, contentType, tt.want.contentType)
-			err := resp.Body.Close()
-			if err != nil {
-				log.Println("Response body close error: ", err.Error())
+			assert.Equal(t, tt.want.code, resp.StatusCode)
+			assert.Equal(t, tt.want.response, body)
+			assert.Equal(t, tt.want.location, location)
+			assert.Equal(t, tt.want.contentType, contentType)
+			bodyCloseErr := resp.Body.Close()
+			if bodyCloseErr != nil {
+				log.Printf("Response body close error: %v\n", bodyCloseErr)
 			}
 		})
 	}
