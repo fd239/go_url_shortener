@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/fd239/go_url_shortener/internal/app/handlers"
+	"github.com/fd239/go_url_shortener/internal/app/middleware"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -18,6 +19,11 @@ type server struct {
 
 func CreateRouter() *chi.Mux {
 	r := chi.NewRouter()
+	r.Use(middleware.AuthMiddleware)
+	r.Use(middleware.DecompressMiddleware)
+	r.Get("/ping", handlers.Ping)
+	r.Get("/api/user/urls", handlers.GetUserURLs)
+	r.Post("/api/shorten/batch", handlers.BatchURLs)
 	r.Post("/api/shorten", handlers.HandleURL)
 	r.Get("/{id}", handlers.GetURL)
 	r.Post("/", handlers.SaveShortURL)

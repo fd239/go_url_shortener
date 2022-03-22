@@ -29,6 +29,7 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 		Items       map[string]string
 		Filename    string
 		StoreInFile bool
+		StoreInPg   bool
 		Producer    *producer
 		Consumer    *consumer
 	}
@@ -48,6 +49,7 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 				Items:       map[string]string{common.TestURL: common.TestShortID},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
+				StoreInPg:   false,
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
@@ -81,6 +83,7 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 		Items       map[string]string
 		Filename    string
 		StoreInFile bool
+		StoreInPg   bool
 		Producer    *producer
 		Consumer    *consumer
 	}
@@ -100,6 +103,7 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 				Items:       map[string]string{common.TestShortID: common.TestURL},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
+				StoreInPg:   false,
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
@@ -113,6 +117,7 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 				Items:       map[string]string{},
 				Filename:    common.TestDBName,
 				StoreInFile: true,
+				StoreInPg:   false,
 				Producer:    getProducer(),
 				Consumer:    getConsumer(),
 			},
