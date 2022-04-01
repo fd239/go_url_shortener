@@ -90,7 +90,7 @@ func DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := context.Get(r, "userID")
-	Store.UpdateItems(deleteIDs, fmt.Sprintf("%v", userID))
+	go Store.UpdateItems(deleteIDs, fmt.Sprintf("%v", userID))
 
 	w.WriteHeader(http.StatusAccepted)
 }
