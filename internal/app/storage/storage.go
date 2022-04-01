@@ -272,15 +272,17 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 func (db *Database) UpdateItems(itemsIDs []string) error {
 	formattedItems := make([]string, 0, len(itemsIDs))
 
-	for _, v := range itemsIDs {
-		item := fmt.Sprintf("('%s')", v)
-		formattedItems = append(formattedItems, item)
+	for _, item := range itemsIDs {
+		formattedItem := fmt.Sprintf("('%s')", item)
+		formattedItems = append(formattedItems, formattedItem)
 	}
 
 	stmt := "UPDATE short_url SET deleted = true FROM ( VALUES " + strings.Join(formattedItems, ",") + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;"
 
-	if _, err := db.PGConn.Exec(context.Background(), stmt); err != nil {
-		log.Printf("Items delete error: %v\n", err)
+	_, err := db.PGConn.Exec(context.Background(), stmt)
+
+	if err != nil {
+		log.Printf("Items update error: %v\n", err)
 		return err
 	}
 
