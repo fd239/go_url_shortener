@@ -65,6 +65,36 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func DeleteURLs(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+
+	if err != nil {
+		log.Printf("delete urls body read error: %v\n", err)
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(body) == 0 {
+		log.Println(common.ErrEmptyBody)
+		http.Error(w, common.ErrEmptyBody.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var deleteIDs []string
+	err = json.Unmarshal(body, &deleteIDs)
+
+	if err != nil {
+		log.Printf("json.Encode: %v\n", err)
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
+		return
+	}
+
+	userID := context.Get(r, "userID")
+	Store.UpdateItems(deleteIDs, fmt.Sprintf("%v", userID))
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func GetURL(w http.ResponseWriter, r *http.Request) {
 	urlID := chi.URLParam(r, "id")
 

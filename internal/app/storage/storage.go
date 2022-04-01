@@ -8,6 +8,7 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ type UserItem struct {
 type Database struct {
 	Items       map[string]string
 	UserItems   map[string][]*UserItem //map[userID][]UserItem
-	PGConn      *pgx.Conn
+	PGConn      *pgxpool.Pool
 	Filename    string
 	StoreInFile bool
 	StoreInPg   bool
@@ -261,6 +262,34 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 
 }
 
+func (db *Database) UpdateItems(itemsIDs []string, userID string) error {
+	ctx := context.Background()
+	tx, err := db.PGConn.Begin(ctx)
+	if err != nil {
+		log.Println("PG Context begin error: ", err.Error())
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// New batch
+	batch := &pgx.Batch{}
+
+	for _, itemID := range itemsIDs {
+		batch.Queue(`UPDATE short_url SET deleted = CASE user_id WHEN $1 THEN true else deleted END WHERE id = $2`, userID, itemID)
+	}
+
+	batchResults := tx.SendBatch(ctx, batch)
+
+	var qerr error
+	var rows pgx.Rows
+	for qerr == nil {
+		rows, qerr = batchResults.Query()
+		rows.Close()
+	}
+
+	return tx.Commit(ctx)
+}
+
 func InitDB() (*Database, error) {
 	storeInPg := len(common.Cfg.DatabaseDSN) > 0
 	storeInFile := len(common.Cfg.FileStoragePath) > 0
@@ -297,7 +326,7 @@ func InitDB() (*Database, error) {
 	}
 
 	if storeInPg {
-		conn, err := pgx.Connect(context.Background(), common.Cfg.DatabaseDSN)
+		conn, err := pgxpool.Connect(context.Background(), common.Cfg.DatabaseDSN)
 		if err != nil {
 			log.Printf("Unable to connect to database: %v\n", err)
 		}
