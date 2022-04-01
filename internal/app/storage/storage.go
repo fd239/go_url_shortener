@@ -328,6 +328,7 @@ func InitDB() (*Database, error) {
 			`CREATE TABLE IF NOT EXISTS short_url
 		(
 			id           varchar(36) PRIMARY KEY NOT NULL,
+			deleted      bool         DEFAULT    false,
 			original_url varchar(150) UNIQUE     NOT NULL,
 			short_url    varchar(50)             NOT NULL,
 			user_id      varchar(50)
