@@ -276,7 +276,7 @@ func (db *Database) UpdateItems(ctx context.Context, itemsIDs []string, userID s
 	batch := &pgx.Batch{}
 
 	for _, itemID := range itemsIDs {
-		batch.Queue(`UPDATE short_url SET deleted = CASE user_id WHEN $1 THEN true else deleted END WHERE id = $2`, userID, itemID)
+		batch.Queue(`UPDATE short_url SET deleted = true WHERE id = $1`, itemID)
 	}
 
 	batchResults := tx.SendBatch(ctx, batch)
