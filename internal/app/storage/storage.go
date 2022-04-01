@@ -262,13 +262,14 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 
 }
 
-func (db *Database) UpdateItems(itemsIDs []string, userID string) error {
-	ctx := context.Background()
+func (db *Database) UpdateItems(ctx context.Context, itemsIDs []string, userID string) error {
 	tx, err := db.PGConn.Begin(ctx)
+
 	if err != nil {
 		log.Println("PG Context begin error: ", err.Error())
 		return err
 	}
+
 	defer tx.Rollback(ctx)
 
 	// New batch

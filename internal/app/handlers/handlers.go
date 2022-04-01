@@ -8,6 +8,7 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/context"
+	"golang.org/x/sync/errgroup"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -90,7 +91,17 @@ func DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := context.Get(r, "userID")
-	go Store.UpdateItems(deleteIDs, fmt.Sprintf("%v", userID))
+
+	ctx := r.Context()
+	g, _ := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return Store.UpdateItems(ctx, deleteIDs, fmt.Sprintf("%v", userID))
+	})
+
+	if err = g.Wait(); err != nil {
+		log.Printf("Batch delete error: %v\n", err)
+	}
 
 	w.WriteHeader(http.StatusAccepted)
 }

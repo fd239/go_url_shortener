@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/context v1.1.1
 	github.com/jackc/pgx/v4 v4.15.0
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
 
 require (
