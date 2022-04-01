@@ -167,11 +167,17 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 func (db *Database) Get(id string) (string, error) {
 	if db.StoreInPg {
 		var url string
-		err := db.PGConn.QueryRow(context.Background(), "select original_url from short_url where short_url=$1", id).Scan(&url)
+		var deleted bool
+		err := db.PGConn.QueryRow(context.Background(), "select original_url, deleted from short_url where short_url=$1", id).Scan(&url, &deleted)
 		if err != nil {
 			log.Println("PG Get short url query error: ", err.Error())
 			return "", err
 		}
+
+		if deleted {
+			return "", common.ErrURLDeleted
+		}
+
 		return url, nil
 	}
 

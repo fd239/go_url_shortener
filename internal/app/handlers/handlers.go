@@ -105,18 +105,25 @@ func DeleteURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetURL(w http.ResponseWriter, r *http.Request) {
-	urlID := chi.URLParam(r, "id")
+	status := 0
 
+	urlID := chi.URLParam(r, "id")
 	url, err := Store.Get(urlID)
 
 	if err != nil {
-		log.Printf("Store GET error: %v\n", err)
-		http.Error(w, common.ErrUnableToFindURL.Error(), http.StatusBadRequest)
-		return
+		if errors.Is(err, common.ErrURLDeleted) {
+			status = http.StatusGone
+		} else {
+			log.Printf("Store GET error: %v\n", err)
+			http.Error(w, common.ErrUnableToFindURL.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		status = http.StatusTemporaryRedirect
+		w.Header().Set("Location", url)
 	}
 
-	w.Header().Set("Location", url)
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	w.WriteHeader(status)
 }
 
 func GetUserURLs(w http.ResponseWriter, r *http.Request) {
