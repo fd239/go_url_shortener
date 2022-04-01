@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const PostgreSQLSuccessfull = 100000
@@ -224,7 +225,7 @@ func (db *Database) Ping() error {
 	return db.PGConn.Ping(context.Background())
 }
 
-func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]BatchItemResponse, error) {
+func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]BatchItemResponse, error) {
 	ctx := context.Background()
 	tx, err := db.PGConn.Begin(ctx)
 	if err != nil {
@@ -262,33 +263,22 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 
 }
 
-func (db *Database) UpdateItems(ctx context.Context, itemsIDs []string, userID string) error {
-	tx, err := db.PGConn.Begin(ctx)
+func (db *Database) UpdateItems(itemsIDs []string) error {
+	formattedItems := make([]string, 0, len(itemsIDs))
 
-	if err != nil {
-		log.Println("PG Context begin error: ", err.Error())
+	for _, v := range itemsIDs {
+		item := fmt.Sprintf("('%s')", v)
+		formattedItems = append(formattedItems, item)
+	}
+
+	stmt := "UPDATE short_url SET deleted = true FROM ( VALUES " + strings.Join(formattedItems, ",") + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;"
+
+	if _, err := db.PGConn.Exec(context.Background(), stmt); err != nil {
+		log.Printf("Items delete error: %v\n", err)
 		return err
 	}
 
-	defer tx.Rollback(ctx)
-
-	// New batch
-	batch := &pgx.Batch{}
-
-	for _, itemID := range itemsIDs {
-		batch.Queue(`UPDATE short_url SET deleted = true WHERE id = $1`, itemID)
-	}
-
-	batchResults := tx.SendBatch(ctx, batch)
-
-	var qerr error
-	var rows pgx.Rows
-	for qerr == nil {
-		rows, qerr = batchResults.Query()
-		rows.Close()
-	}
-
-	return tx.Commit(ctx)
+	return nil
 }
 
 func InitDB() (*Database, error) {

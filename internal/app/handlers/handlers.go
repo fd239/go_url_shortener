@@ -49,7 +49,7 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := context.Get(r, "userID")
-	batchItemsResponse, batchErr := Store.BatchItems(batchItems, fmt.Sprintf("%v", userID))
+	batchItemsResponse, batchErr := Store.CreateItems(batchItems, fmt.Sprintf("%v", userID))
 
 	if batchErr != nil {
 		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
@@ -90,17 +90,15 @@ func DeleteURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := context.Get(r, "userID")
-
-	ctx := r.Context()
-	g, _ := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(r.Context())
 
 	g.Go(func() error {
-		return Store.UpdateItems(ctx, deleteIDs, fmt.Sprintf("%v", userID))
+		return Store.UpdateItems(deleteIDs)
 	})
 
 	if err = g.Wait(); err != nil {
-		log.Printf("Batch delete error: %v\n", err)
+		http.Error(w, common.ErrResponseEncode.Error(), http.StatusBadRequest)
+		return
 	}
 
 	w.WriteHeader(http.StatusAccepted)
