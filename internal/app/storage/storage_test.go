@@ -1,12 +1,16 @@
 package storage
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
 )
+
+var testUserID = "testUser"
 
 func getProducer() *producer {
 	prod, err := NewProducer(common.TestDBName)
@@ -141,5 +145,127 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 			}
 			assert.Equalf(t, tt.want, got, "GetShortRoute(%v)", tt.args.routeID)
 		})
+	}
+}
+
+func TestDatabase_Insert(t *testing.T) {
+	type fields struct {
+		Items       map[string]string
+		UserItems   map[string][]*UserItem
+		PGConn      *sql.DB
+		Filename    string
+		StoreInFile bool
+		StoreInPg   bool
+		Producer    *producer
+		Consumer    *consumer
+	}
+	type args struct {
+		item   string
+		userID string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "OK IN memory",
+			fields: fields{
+				Items:       map[string]string{},
+				UserItems:   map[string][]*UserItem{},
+				PGConn:      nil,
+				Filename:    "",
+				StoreInFile: false,
+				StoreInPg:   false,
+				Producer:    nil,
+				Consumer:    nil,
+			},
+			args: args{
+				item:   common.TestURL,
+				userID: "test",
+			},
+			want:    common.TestShortID,
+			wantErr: assert.NoError,
+		},
+		{
+			name: "OK IN file",
+			fields: fields{
+				Items:       map[string]string{},
+				UserItems:   map[string][]*UserItem{},
+				PGConn:      nil,
+				Filename:    "",
+				StoreInFile: true,
+				StoreInPg:   false,
+				Producer:    getProducer(),
+				Consumer:    nil,
+			},
+			args: args{
+				item:   common.TestURL,
+				userID: "test",
+			},
+			want:    common.TestShortID,
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := &Database{
+				Items:       tt.fields.Items,
+				UserItems:   tt.fields.UserItems,
+				PGConn:      tt.fields.PGConn,
+				Filename:    tt.fields.Filename,
+				StoreInFile: tt.fields.StoreInFile,
+				StoreInPg:   tt.fields.StoreInPg,
+				Producer:    tt.fields.Producer,
+				Consumer:    tt.fields.Consumer,
+			}
+			got, err := db.Insert(tt.args.item, tt.args.userID)
+			if !tt.wantErr(t, err, fmt.Sprintf("Insert(%v, %v)", tt.args.item, tt.args.userID)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "Insert(%v, %v)", tt.args.item, tt.args.userID)
+		})
+	}
+}
+
+func TestDatabaseInsert_PG(t *testing.T) {
+	var res string
+
+	conn, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer conn.Close()
+
+	//mock.ExpectBegin()
+	//mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	//mock.ExpectExec("INSERT INTO product_viewers").WithArgs(2, 3).WillReturnResult(sqlmock.NewResult(1, 1))
+	//mock.ExpectCommit()
+
+	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLSuccessfull)
+	mock.ExpectQuery(insertStmt).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		PGConn:      conn,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInPg:   true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	if res, err = db.Insert(common.TestURL, testUserID); err != nil {
+		t.Errorf("error was not expected while updating stats: %s", err)
+	}
+
+	assert.Equal(t, res, common.TestShortID)
+
+	// we make sure that all expectations were met
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }

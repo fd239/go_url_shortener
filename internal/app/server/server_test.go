@@ -28,6 +28,16 @@ func getJSONRequest() *bytes.Buffer {
 	return &buf
 }
 
+func getJSONDeleteRequest() *bytes.Buffer {
+	var buf bytes.Buffer
+	req := []string{common.TestShortID}
+	if err := json.NewEncoder(&buf).Encode(req); err != nil {
+		log.Println("JSON encode error")
+	}
+
+	return &buf
+}
+
 func getJSONResponse() string {
 	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID)}
 	b, err := json.Marshal(res)
@@ -109,6 +119,12 @@ func TestRouter(t *testing.T) {
 			name: "POST API 200",
 			args: args{http.MethodPost, "/api/shorten", getJSONRequest()},
 			want: want{http.StatusCreated, getJSONResponse(), "", "application/json; charset=UTF-8"},
+		},
+		//"/api/user/urls"
+		{
+			name: "DELETE API 200",
+			args: args{http.MethodDelete, "/api/user/urls", getJSONDeleteRequest()},
+			want: want{http.StatusAccepted, getJSONResponse(), "", "application/json; charset=UTF-8"},
 		},
 	}
 

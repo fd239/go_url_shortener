@@ -3,12 +3,11 @@ package storage
 import (
 	"context"
 	"crypto/md5"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ type UserItem struct {
 type Database struct {
 	Items       map[string]string
 	UserItems   map[string][]*UserItem //map[userID][]UserItem
-	PGConn      *pgxpool.Pool
+	PGConn      *sql.DB
 	Filename    string
 	StoreInFile bool
 	StoreInPg   bool
@@ -129,21 +128,7 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 	}
 
 	if db.StoreInPg {
-		rowID := uuid.NewString()
-		stmt :=
-			`WITH e AS (
-			INSERT INTO short_url (original_url, short_url, id, user_id)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (original_url) DO NOTHING
-		RETURNING short_url
-		)
-		SELECT short_url, 100000
-		FROM e
-		UNION ALL
-		SELECT short_url, 100001
-		FROM short_url
-		WHERE original_url=$1;`
-		rows, err := db.PGConn.Query(context.Background(), stmt, item, hashString, rowID, userID)
+		rows, err := db.PGConn.Query(insertStmt, item, hashString, userID)
 		if err != nil {
 			log.Println("PG Save items error: ", err.Error())
 			return "", err
@@ -168,7 +153,7 @@ func (db *Database) Get(id string) (string, error) {
 	if db.StoreInPg {
 		var url string
 		var deleted bool
-		err := db.PGConn.QueryRow(context.Background(), "select original_url, deleted from short_url where short_url=$1", id).Scan(&url, &deleted)
+		err := db.PGConn.QueryRow("select original_url, deleted from short_url where short_url=$1", id).Scan(&url, &deleted)
 		if err != nil {
 			log.Println("PG Get short url query error: ", err.Error())
 			return "", err
@@ -191,7 +176,7 @@ func (db *Database) Get(id string) (string, error) {
 func (db *Database) GetUserURL(userID string) []*UserItem {
 	if db.StoreInPg {
 		userURLs := make([]*UserItem, 0)
-		rows, err := db.PGConn.Query(context.Background(), "select original_url, short_url from short_url where user_id=$1", userID)
+		rows, err := db.PGConn.Query("select original_url, short_url from short_url where user_id=$1", userID)
 
 		if err != nil {
 			log.Println("PG Get user urls query error: ", err.Error())
@@ -228,27 +213,37 @@ func (db *Database) RestoreItems() error {
 }
 
 func (db *Database) Ping() error {
-	return db.PGConn.Ping(context.Background())
+	return db.PGConn.Ping()
 }
 
 func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]BatchItemResponse, error) {
 	ctx := context.Background()
-	tx, err := db.PGConn.Begin(ctx)
+	tx, err := db.PGConn.Begin()
 	if err != nil {
 		log.Println("PG Context begin error: ", err.Error())
 		return nil, err
 	}
 
-	// New batch
-	batch := &pgx.Batch{}
-	var batchItemsResponse []BatchItemResponse
+	defer tx.Rollback()
 
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_url(id, short_url, original_url, user_id) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;")
+
+	if err != nil {
+		log.Println("PG prepare context error: ", err.Error())
+		return nil, err
+	}
+
+	defer stmt.Close()
+
+	var batchItemsResponse []BatchItemResponse
 	for _, item := range items {
 		batchItemResponse := BatchItemResponse{}
-
 		shortURL := db.getShortItem(item.OriginalURL)
 
-		batch.Queue("INSERT INTO short_url (id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;", item.CorrelationID, shortURL, item.OriginalURL, userID)
+		if _, err = stmt.ExecContext(ctx, item.CorrelationID, shortURL, item.OriginalURL, userID); err != nil {
+			log.Println("PG exec context error: ", err.Error())
+			return nil, err
+		}
 
 		batchItemResponse.CorrelationID = item.CorrelationID
 		batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
@@ -256,17 +251,41 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 		batchItemsResponse = append(batchItemsResponse, batchItemResponse)
 	}
 
-	batchResults := tx.SendBatch(ctx, batch)
+	// New batch
+	//batch := &pgx.Batch{}
+	//var batchItemsResponse []BatchItemResponse
+	//
+	//for _, item := range items {
+	//	batchItemResponse := BatchItemResponse{}
+	//
+	//	shortURL := db.getShortItem(item.OriginalURL)
+	//
+	//	batch.Queue("INSERT INTO short_url (id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;", item.CorrelationID, shortURL, item.OriginalURL, userID)
+	//
+	//	batchItemResponse.CorrelationID = item.CorrelationID
+	//	batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
+	//
+	//	batchItemsResponse = append(batchItemsResponse, batchItemResponse)
+	//}
+	//
+	//txStmt := tx.StmtContext(ctx, insertStmt)
+	//
+	//batchResults := tx.Prepare(ctx, batch)
+	//
+	//var qerr error
+	//var rows pgx.Rows
+	//for qerr == nil {
+	//	rows, qerr = batchResults.Query()
+	//	rows.Close()
+	//}
+	//
 
-	var qerr error
-	var rows pgx.Rows
-	for qerr == nil {
-		rows, qerr = batchResults.Query()
-		rows.Close()
+	if err = tx.Commit(); err != nil {
+		log.Println("PG tx commit error: ", err.Error())
+		return nil, err
 	}
 
-	return batchItemsResponse, tx.Commit(ctx)
-
+	return batchItemsResponse, nil
 }
 
 func (db *Database) UpdateItems(itemsIDs []string) error {
@@ -279,7 +298,7 @@ func (db *Database) UpdateItems(itemsIDs []string) error {
 
 	stmt := "UPDATE short_url SET deleted = true FROM ( VALUES " + strings.Join(formattedItems, ",") + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;"
 
-	_, err := db.PGConn.Exec(context.Background(), stmt)
+	_, err := db.PGConn.Exec(stmt)
 
 	if err != nil {
 		log.Printf("Items update error: %v\n", err)
@@ -325,7 +344,7 @@ func InitDB() (*Database, error) {
 	}
 
 	if storeInPg {
-		conn, err := pgxpool.Connect(context.Background(), common.Cfg.DatabaseDSN)
+		conn, err := sql.Open("postgres", common.Cfg.DatabaseDSN)
 		if err != nil {
 			log.Printf("Unable to connect to database: %v\n", err)
 		}
@@ -342,7 +361,7 @@ func InitDB() (*Database, error) {
 			user_id      varchar(50)
 		)`
 
-		_, err = DB.PGConn.Exec(context.Background(), stmt)
+		_, err = DB.PGConn.Exec(stmt)
 
 		if err != nil {
 			log.Println("short url table creation error: ", err.Error())
