@@ -238,12 +238,7 @@ func TestInsertURLOK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer func(conn *sql.DB) {
-		err = conn.Close()
-		if err != nil {
-			t.Errorf("conn close error: %v", err)
-		}
-	}(conn)
+	defer conn.Close()
 
 	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLSuccessful)
 	mock.ExpectQuery(regexp.QuoteMeta(insertStmt)).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
@@ -276,12 +271,7 @@ func TestInsertDuplicateErr(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer func(conn *sql.DB) {
-		err = conn.Close()
-		if err != nil {
-			t.Errorf("conn close error: %v", err)
-		}
-	}(conn)
+	defer conn.Close()
 
 	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLDuplicate)
 	mock.ExpectQuery(regexp.QuoteMeta(insertStmt)).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
@@ -316,12 +306,7 @@ func TestGetURLOK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer func(conn *sql.DB) {
-		err = conn.Close()
-		if err != nil {
-			t.Errorf("conn close error: %v", err)
-		}
-	}(conn)
+	defer conn.Close()
 
 	rows := sqlmock.NewRows([]string{"url", "deleted"}).AddRow(common.TestURL, false)
 	mock.ExpectQuery(regexp.QuoteMeta(getOriginalURLStmt)).WithArgs(common.TestShortID).WillReturnRows(rows)
@@ -354,12 +339,7 @@ func TestGetURLDeletedError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer func(conn *sql.DB) {
-		err := conn.Close()
-		if err != nil {
-
-		}
-	}(conn)
+	defer conn.Close()
 
 	rows := sqlmock.NewRows([]string{"url", "deleted"}).AddRow(common.TestURL, true)
 	mock.ExpectQuery(regexp.QuoteMeta(getOriginalURLStmt)).WithArgs(common.TestShortID).WillReturnRows(rows)
@@ -468,12 +448,7 @@ func TestGetUserURLPgRowsErr(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer func(conn *sql.DB) {
-		err = conn.Close()
-		if err != nil {
-			t.Errorf("conn close error: %v", err)
-		}
-	}(conn)
+	defer conn.Close()
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnError(fmt.Errorf("some error"))
 
