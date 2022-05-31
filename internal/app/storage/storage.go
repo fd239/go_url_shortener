@@ -8,9 +8,11 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const PostgreSQLSuccessfull = 100000
@@ -35,7 +37,7 @@ type UserItem struct {
 type Database struct {
 	Items       map[string]string
 	UserItems   map[string][]*UserItem //map[userID][]UserItem
-	PGConn      *pgx.Conn
+	PGConn      *pgxpool.Pool
 	Filename    string
 	StoreInFile bool
 	StoreInPg   bool
@@ -165,11 +167,17 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 func (db *Database) Get(id string) (string, error) {
 	if db.StoreInPg {
 		var url string
-		err := db.PGConn.QueryRow(context.Background(), "select original_url from short_url where short_url=$1", id).Scan(&url)
+		var deleted bool
+		err := db.PGConn.QueryRow(context.Background(), "select original_url, deleted from short_url where short_url=$1", id).Scan(&url, &deleted)
 		if err != nil {
 			log.Println("PG Get short url query error: ", err.Error())
 			return "", err
 		}
+
+		if deleted {
+			return "", common.ErrURLDeleted
+		}
+
 		return url, nil
 	}
 
@@ -223,7 +231,7 @@ func (db *Database) Ping() error {
 	return db.PGConn.Ping(context.Background())
 }
 
-func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]BatchItemResponse, error) {
+func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]BatchItemResponse, error) {
 	ctx := context.Background()
 	tx, err := db.PGConn.Begin(ctx)
 	if err != nil {
@@ -259,6 +267,26 @@ func (db *Database) BatchItems(items []BatchItemRequest, userID string) ([]Batch
 
 	return batchItemsResponse, tx.Commit(ctx)
 
+}
+
+func (db *Database) UpdateItems(itemsIDs []string) error {
+	formattedItems := make([]string, 0, len(itemsIDs))
+
+	for _, item := range itemsIDs {
+		formattedItem := fmt.Sprintf("('%s')", item)
+		formattedItems = append(formattedItems, formattedItem)
+	}
+
+	stmt := "UPDATE short_url SET deleted = true FROM ( VALUES " + strings.Join(formattedItems, ",") + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;"
+
+	_, err := db.PGConn.Exec(context.Background(), stmt)
+
+	if err != nil {
+		log.Printf("Items update error: %v\n", err)
+		return err
+	}
+
+	return nil
 }
 
 func InitDB() (*Database, error) {
@@ -297,7 +325,7 @@ func InitDB() (*Database, error) {
 	}
 
 	if storeInPg {
-		conn, err := pgx.Connect(context.Background(), common.Cfg.DatabaseDSN)
+		conn, err := pgxpool.Connect(context.Background(), common.Cfg.DatabaseDSN)
 		if err != nil {
 			log.Printf("Unable to connect to database: %v\n", err)
 		}
@@ -308,6 +336,7 @@ func InitDB() (*Database, error) {
 			`CREATE TABLE IF NOT EXISTS short_url
 		(
 			id           varchar(36) PRIMARY KEY NOT NULL,
+			deleted      bool         DEFAULT    false,
 			original_url varchar(150) UNIQUE     NOT NULL,
 			short_url    varchar(50)             NOT NULL,
 			user_id      varchar(50)

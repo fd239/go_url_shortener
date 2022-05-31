@@ -12,4 +12,5 @@ var (
 	ErrOriginalURLConflict = errors.New("original url postgresql save conflict")
 	ErrResponseEncode      = errors.New("response encode error")
 	ErrGzipRead            = errors.New("gzip read error")
+	ErrURLDeleted          = errors.New("url deleted")
 )

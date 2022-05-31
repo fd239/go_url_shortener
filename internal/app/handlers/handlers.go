@@ -8,6 +8,7 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/context"
+	"golang.org/x/sync/errgroup"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -48,7 +49,7 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := context.Get(r, "userID")
-	batchItemsResponse, batchErr := Store.BatchItems(batchItems, fmt.Sprintf("%v", userID))
+	batchItemsResponse, batchErr := Store.CreateItems(batchItems, fmt.Sprintf("%v", userID))
 
 	if batchErr != nil {
 		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
@@ -65,19 +66,64 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetURL(w http.ResponseWriter, r *http.Request) {
-	urlID := chi.URLParam(r, "id")
-
-	url, err := Store.Get(urlID)
+func DeleteURLs(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
-		log.Printf("Store GET error: %v\n", err)
-		http.Error(w, common.ErrUnableToFindURL.Error(), http.StatusBadRequest)
+		log.Printf("delete urls body read error: %v\n", err)
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Location", url)
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	if len(body) == 0 {
+		log.Println(common.ErrEmptyBody)
+		http.Error(w, common.ErrEmptyBody.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var deleteIDs []string
+	err = json.Unmarshal(body, &deleteIDs)
+
+	if err != nil {
+		log.Printf("json.Encode: %v\n", err)
+		http.Error(w, common.ErrBodyReadError.Error(), http.StatusBadRequest)
+		return
+	}
+
+	g, _ := errgroup.WithContext(r.Context())
+
+	g.Go(func() error {
+		return Store.UpdateItems(deleteIDs)
+	})
+
+	if err = g.Wait(); err != nil {
+		http.Error(w, common.ErrResponseEncode.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func GetURL(w http.ResponseWriter, r *http.Request) {
+	status := 0
+
+	urlID := chi.URLParam(r, "id")
+	url, err := Store.Get(urlID)
+
+	if err != nil {
+		if errors.Is(err, common.ErrURLDeleted) {
+			status = http.StatusGone
+		} else {
+			log.Printf("Store GET error: %v\n", err)
+			http.Error(w, common.ErrUnableToFindURL.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		status = http.StatusTemporaryRedirect
+		w.Header().Set("Location", url)
+	}
+
+	w.WriteHeader(status)
 }
 
 func GetUserURLs(w http.ResponseWriter, r *http.Request) {
