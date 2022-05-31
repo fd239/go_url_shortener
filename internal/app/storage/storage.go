@@ -152,6 +152,12 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 				return shortURL, common.ErrOriginalURLConflict
 			}
 		}
+
+		err = rows.Err()
+		if err != nil {
+			log.Println("PG Insert rows err error: ", err.Error())
+			return "", err
+		}
 	}
 
 	return hashString, nil
