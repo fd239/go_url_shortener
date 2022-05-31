@@ -120,12 +120,6 @@ func TestRouter(t *testing.T) {
 			args: args{http.MethodPost, "/api/shorten", getJSONRequest()},
 			want: want{http.StatusCreated, getJSONResponse(), "", "application/json; charset=UTF-8"},
 		},
-		//"/api/user/urls"
-		{
-			name: "DELETE API 200",
-			args: args{http.MethodDelete, "/api/user/urls", getJSONDeleteRequest()},
-			want: want{http.StatusAccepted, getJSONResponse(), "", "application/json; charset=UTF-8"},
-		},
 	}
 
 	var err error
