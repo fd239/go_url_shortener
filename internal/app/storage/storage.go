@@ -244,7 +244,7 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 		}
 	}(tx)
 
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_url(id, short_url, original_url, user_id) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;")
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_url(id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;")
 
 	if err != nil {
 		log.Println("PG prepare context error: ", err.Error())
@@ -273,35 +273,6 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 
 		batchItemsResponse = append(batchItemsResponse, batchItemResponse)
 	}
-
-	// New batch
-	//batch := &pgx.Batch{}
-	//var batchItemsResponse []BatchItemResponse
-	//
-	//for _, item := range items {
-	//	batchItemResponse := BatchItemResponse{}
-	//
-	//	shortURL := db.getShortItem(item.OriginalURL)
-	//
-	//	batch.Queue("INSERT INTO short_url (id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;", item.CorrelationID, shortURL, item.OriginalURL, userID)
-	//
-	//	batchItemResponse.CorrelationID = item.CorrelationID
-	//	batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
-	//
-	//	batchItemsResponse = append(batchItemsResponse, batchItemResponse)
-	//}
-	//
-	//txStmt := tx.StmtContext(ctx, insertStmt)
-	//
-	//batchResults := tx.Prepare(ctx, batch)
-	//
-	//var qerr error
-	//var rows pgx.Rows
-	//for qerr == nil {
-	//	rows, qerr = batchResults.Query()
-	//	rows.Close()
-	//}
-	//
 
 	if err = tx.Commit(); err != nil {
 		log.Println("PG tx commit error: ", err.Error())
