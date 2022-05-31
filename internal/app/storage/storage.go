@@ -7,14 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-const PostgreSQLSuccessfull = 100000
+const PostgreSQLSuccessful = 100000
 const PostgreSQLDuplicate = 100001
 
 type BatchItemRequest struct {
