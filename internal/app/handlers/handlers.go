@@ -128,7 +128,12 @@ func GetURL(w http.ResponseWriter, r *http.Request) {
 
 func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userID := context.Get(r, "userID")
-	userURLs := Store.GetUserURL(fmt.Sprintf("%v", userID))
+	userURLs, err := Store.GetUserURL(fmt.Sprintf("%v", userID))
+
+	if err != nil {
+		http.Error(w, "store error", http.StatusNoContent)
+		return
+	}
 
 	if len(userURLs) == 0 {
 		http.Error(w, common.ErrNoUserURLs.Error(), http.StatusNoContent)
@@ -234,7 +239,7 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonResponse)
 }
 
-func Ping(w http.ResponseWriter, r *http.Request) {
+func Ping(w http.ResponseWriter, _ *http.Request) {
 	err := Store.Ping()
 
 	if err != nil {
