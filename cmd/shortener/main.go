@@ -4,6 +4,7 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/fd239/go_url_shortener/internal/app/server"
 	"log"
+	_ "net/http/pprof" // подключаем пакет pprof
 )
 
 func main() {

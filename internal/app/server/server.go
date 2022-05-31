@@ -21,6 +21,7 @@ func CreateRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.AuthMiddleware)
 	r.Use(middleware.DecompressMiddleware)
+	r.Mount("/debug", middleware.Profiler())
 	r.Get("/ping", handlers.Ping)
 	r.Get("/api/user/urls", handlers.GetUserURLs)
 	r.Delete("/api/user/urls", handlers.DeleteURLs)
