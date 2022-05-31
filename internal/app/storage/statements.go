@@ -12,3 +12,6 @@ const insertStmt = `WITH e AS (
 		SELECT short_url, 100001
 		FROM short_url
 		WHERE original_url=$1`
+
+const getOriginalURLStmt = `select original_url, deleted from short_url where short_url=$1`
+const getUserURL = `select original_url, short_url from short_url where user_id=$1`

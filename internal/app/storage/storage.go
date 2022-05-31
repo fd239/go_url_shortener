@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"log"
 	"os"
 	"path/filepath"
@@ -134,12 +134,20 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 			return "", err
 		}
 
-		defer rows.Close()
+		defer func(rows *sql.Rows) {
+			err = rows.Close()
+			if err != nil {
+				log.Println("rows close error: ", err)
+			}
+		}(rows)
 
 		if rows.Next() {
 			shortURL := ""
 			insertResult := 0
-			rows.Scan(&shortURL, &insertResult)
+			err = rows.Scan(&shortURL, &insertResult)
+			if err != nil {
+				log.Println("rows scan error: ", err)
+			}
 			if insertResult == PostgreSQLDuplicate {
 				return shortURL, common.ErrOriginalURLConflict
 			}
@@ -153,7 +161,7 @@ func (db *Database) Get(id string) (string, error) {
 	if db.StoreInPg {
 		var url string
 		var deleted bool
-		err := db.PGConn.QueryRow("select original_url, deleted from short_url where short_url=$1", id).Scan(&url, &deleted)
+		err := db.PGConn.QueryRow(getOriginalURLStmt, id).Scan(&url, &deleted)
 		if err != nil {
 			log.Println("PG Get short url query error: ", err.Error())
 			return "", err
@@ -173,23 +181,29 @@ func (db *Database) Get(id string) (string, error) {
 	return "", common.ErrUnableToFindURL
 }
 
-func (db *Database) GetUserURL(userID string) []*UserItem {
+func (db *Database) GetUserURL(userID string) ([]*UserItem, error) {
 	if db.StoreInPg {
 		userURLs := make([]*UserItem, 0)
-		rows, err := db.PGConn.Query("select original_url, short_url from short_url where user_id=$1", userID)
+		rows, err := db.PGConn.Query(getUserURL, userID)
 
 		if err != nil {
 			log.Println("PG Get user urls query error: ", err.Error())
-			return nil
+			return nil, err
 		}
 
-		defer rows.Close()
+		defer func(rows *sql.Rows) {
+			err = rows.Close()
+			if err != nil {
+				log.Println("rows close error: ", err)
+			}
+		}(rows)
 
 		for rows.Next() {
 			userItem := &UserItem{}
 			err = rows.Scan(&userItem.OriginalURL, &userItem.ShortURL)
 			if err != nil {
 				log.Println("PG Get user urls row scan error: ", err.Error())
+				return nil, err
 			}
 			userURLs = append(userURLs, userItem)
 		}
@@ -197,14 +211,13 @@ func (db *Database) GetUserURL(userID string) []*UserItem {
 		err = rows.Err()
 		if err != nil {
 			log.Println("PG Get user urls rows err error: ", err.Error())
-			return nil
+			return nil, err
 		}
 
-		return userURLs
-
+		return userURLs, nil
 	}
 
-	return db.UserItems[userID]
+	return db.UserItems[userID], nil
 }
 
 func (db *Database) RestoreItems() error {
@@ -224,7 +237,12 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 		return nil, err
 	}
 
-	defer tx.Rollback()
+	defer func(tx *sql.Tx) {
+		err = tx.Rollback()
+		if err != nil {
+			log.Println("transaction rollback error: ", err)
+		}
+	}(tx)
 
 	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_url(id, short_url, original_url, user_id) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;")
 
@@ -233,7 +251,12 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 		return nil, err
 	}
 
-	defer stmt.Close()
+	defer func(stmt *sql.Stmt) {
+		err = stmt.Close()
+		if err != nil {
+			log.Println("statement close error: ", err)
+		}
+	}(stmt)
 
 	var batchItemsResponse []BatchItemResponse
 	for _, item := range items {
@@ -344,7 +367,7 @@ func InitDB() (*Database, error) {
 	}
 
 	if storeInPg {
-		conn, err := sql.Open("postgres", common.Cfg.DatabaseDSN)
+		conn, err := sql.Open("pgx", common.Cfg.DatabaseDSN)
 		if err != nil {
 			log.Printf("Unable to connect to database: %v\n", err)
 		}
@@ -352,9 +375,10 @@ func InitDB() (*Database, error) {
 		DB.PGConn = conn
 
 		stmt :=
-			`CREATE TABLE IF NOT EXISTS short_url
+			`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+			CREATE TABLE IF NOT EXISTS short_url
 		(
-			id           varchar(36) PRIMARY KEY NOT NULL,
+			id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
 			deleted      bool         DEFAULT    false,
 			original_url varchar(150) UNIQUE     NOT NULL,
 			short_url    varchar(50)             NOT NULL,

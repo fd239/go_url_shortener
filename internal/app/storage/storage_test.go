@@ -7,6 +7,7 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/stretchr/testify/assert"
 	"log"
+	"regexp"
 	"testing"
 )
 
@@ -230,22 +231,22 @@ func TestDatabase_Insert(t *testing.T) {
 	}
 }
 
-func TestDatabaseInsert_PG(t *testing.T) {
+func TestInsertURLOK(t *testing.T) {
 	var res string
 
 	conn, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer conn.Close()
+	defer func(conn *sql.DB) {
+		err = conn.Close()
+		if err != nil {
+			t.Errorf("conn close error: %v", err)
+		}
+	}(conn)
 
-	//mock.ExpectBegin()
-	//mock.ExpectExec("UPDATE products").WillReturnResult(sqlmock.NewResult(1, 1))
-	//mock.ExpectExec("INSERT INTO product_viewers").WithArgs(2, 3).WillReturnResult(sqlmock.NewResult(1, 1))
-	//mock.ExpectCommit()
-
-	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLSuccessfull)
-	mock.ExpectQuery(insertStmt).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
+	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLSuccessful)
+	mock.ExpectQuery(regexp.QuoteMeta(insertStmt)).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
 
 	var db = &Database{
 		Items:       map[string]string{},
@@ -259,7 +260,7 @@ func TestDatabaseInsert_PG(t *testing.T) {
 	} // now we execute our method
 
 	if res, err = db.Insert(common.TestURL, testUserID); err != nil {
-		t.Errorf("error was not expected while updating stats: %s", err)
+		t.Errorf("error was not expected while inserting: %s", err)
 	}
 
 	assert.Equal(t, res, common.TestShortID)
@@ -268,4 +269,228 @@ func TestDatabaseInsert_PG(t *testing.T) {
 	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
+}
+
+func TestInsertDuplicateErr(t *testing.T) {
+	conn, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer func(conn *sql.DB) {
+		err = conn.Close()
+		if err != nil {
+			t.Errorf("conn close error: %v", err)
+		}
+	}(conn)
+
+	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLDuplicate)
+	mock.ExpectQuery(regexp.QuoteMeta(insertStmt)).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		PGConn:      conn,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInPg:   true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	if _, err = db.Insert(common.TestURL, testUserID); err == nil {
+		t.Error("error was expected while inserting")
+	}
+
+	assert.ErrorIs(t, err, common.ErrOriginalURLConflict)
+
+	// we make sure that all expectations were met
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestGetURLOK(t *testing.T) {
+	var res string
+
+	conn, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer func(conn *sql.DB) {
+		err = conn.Close()
+		if err != nil {
+			t.Errorf("conn close error: %v", err)
+		}
+	}(conn)
+
+	rows := sqlmock.NewRows([]string{"url", "deleted"}).AddRow(common.TestURL, false)
+	mock.ExpectQuery(regexp.QuoteMeta(getOriginalURLStmt)).WithArgs(common.TestShortID).WillReturnRows(rows)
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		PGConn:      conn,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInPg:   true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	if res, err = db.Get(common.TestShortID); err != nil {
+		t.Errorf("error was not expected while get: %s", err)
+	}
+
+	assert.Equal(t, res, common.TestURL)
+
+	// we make sure that all expectations were met
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestGetURLDeletedError(t *testing.T) {
+	conn, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer func(conn *sql.DB) {
+		err := conn.Close()
+		if err != nil {
+
+		}
+	}(conn)
+
+	rows := sqlmock.NewRows([]string{"url", "deleted"}).AddRow(common.TestURL, true)
+	mock.ExpectQuery(regexp.QuoteMeta(getOriginalURLStmt)).WithArgs(common.TestShortID).WillReturnRows(rows)
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		PGConn:      conn,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInPg:   true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	if _, err = db.Get(common.TestShortID); err == nil {
+		t.Errorf("error was expected while inserting: %s", err)
+	}
+
+	assert.ErrorIs(t, err, common.ErrURLDeleted)
+
+	// we make sure that all expectations were met
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestGetUserURLOK(t *testing.T) {
+	var res []*UserItem
+
+	conn, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer func(conn *sql.DB) {
+		err := conn.Close()
+		if err != nil {
+
+		}
+	}(conn)
+
+	rows := sqlmock.NewRows([]string{"OriginalURL", "ShortURL"}).AddRow(common.TestURL, common.TestShortID)
+	mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnRows(rows)
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		PGConn:      conn,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInPg:   true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	if res, err = db.GetUserURL(testUserID); err != nil {
+		t.Errorf("error was not expected while get user url: %s", err)
+	}
+
+	assert.Equal(t, res, []*UserItem{{
+		ShortURL:    common.TestShortID,
+		OriginalURL: common.TestURL,
+	}})
+
+	// we make sure that all expectations were met
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestGetUserURLPgErr(t *testing.T) {
+	conn, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer func(conn *sql.DB) {
+		err := conn.Close()
+		if err != nil {
+
+		}
+	}(conn)
+
+	rows := sqlmock.NewRows([]string{"test"}).AddRow("test")
+	mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnRows(rows)
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		PGConn:      conn,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInPg:   true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	if _, err = db.GetUserURL(testUserID); err == nil {
+		t.Error("error was expected while get user url")
+	}
+
+	assert.Error(t, err)
+}
+
+func TestGetUserURLPgRowsErr(t *testing.T) {
+	conn, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer func(conn *sql.DB) {
+		err = conn.Close()
+		if err != nil {
+			t.Errorf("conn close error: %v", err)
+		}
+	}(conn)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnError(fmt.Errorf("some error"))
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		PGConn:      conn,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInPg:   true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	if _, err = db.GetUserURL(testUserID); err == nil {
+		t.Error("error was expected while get user url")
+	}
+
+	assert.Error(t, err)
 }
