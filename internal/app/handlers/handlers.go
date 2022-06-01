@@ -24,6 +24,7 @@ type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
+// BatchURLs save multiple urls to storage
 func BatchURLs(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
@@ -66,6 +67,7 @@ func BatchURLs(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// DeleteURLs mark url as deleted in Postgres
 func DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
@@ -104,6 +106,7 @@ func DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// GetURL GET method for receive url by short id
 func GetURL(w http.ResponseWriter, r *http.Request) {
 	status := 0
 
@@ -126,6 +129,7 @@ func GetURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(status)
 }
 
+// GetUserURLs Get all user saved urls by user ID
 func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userID := context.Get(r, "userID")
 	userURLs, err := Store.GetUserURL(fmt.Sprintf("%v", userID))
@@ -158,6 +162,7 @@ func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	w.Write(userURLsJSON)
 }
 
+// SaveShortURL receive short URL in POST method and save it to storage
 func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	status := 0
@@ -196,6 +201,7 @@ func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)))
 }
 
+// HandleURL save short URL received from POST request
 func HandleURL(w http.ResponseWriter, r *http.Request) {
 	shorten := ShortenRequest{}
 	status := 0
@@ -239,6 +245,7 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonResponse)
 }
 
+// Ping short url microservice health check
 func Ping(w http.ResponseWriter, _ *http.Request) {
 	err := Store.Ping()
 

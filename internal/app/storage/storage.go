@@ -14,7 +14,10 @@ import (
 	"strings"
 )
 
+//PostgresSQLSuccessful insert statement have no duplicate by original url
 const PostgresSQLSuccessful = 100000
+
+//PostgresSQLDuplicate insert statement have duplicate by original url
 const PostgresSQLDuplicate = 100001
 
 type BatchItemRequest struct {
@@ -33,6 +36,7 @@ type UserItem struct {
 	OriginalURL string `json:"original_url" db:"original_url"`
 }
 
+//Database repo struct with all possible options: im-mem, file and pg
 type Database struct {
 	Items       map[string]string
 	UserItems   map[string][]*UserItem //map[userID][]UserItem
@@ -49,6 +53,7 @@ type consumer struct {
 	decoder *json.Decoder
 }
 
+//NewConsumer creating consumer by filename
 func NewConsumer(fileName string) (*consumer, error) {
 	err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
 
@@ -77,6 +82,7 @@ type producer struct {
 	encoder *json.Encoder
 }
 
+//NewConsumer creating producer by filename
 func NewProducer(fileName string) (*producer, error) {
 	err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
 
@@ -96,19 +102,23 @@ func NewProducer(fileName string) (*producer, error) {
 	}, err
 }
 
+// SaveItems save from records from memory to file
 func (db *Database) SaveItems() error {
 	return db.Producer.encoder.Encode(db.Items)
 }
 
+// Close save file
 func (p *producer) Close() error {
 	return p.file.Close()
 }
 
+// getShortItem func for short url make
 func (db *Database) getShortItem(item string) string {
 	data := []byte(item)
 	return fmt.Sprintf("%x", md5.Sum(data))
 }
 
+// Insert save short url and user ID to storage
 func (db *Database) Insert(item string, userID string) (string, error) {
 	hashString := db.getShortItem(item)
 
@@ -163,6 +173,7 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 	return hashString, nil
 }
 
+// Get URL by id from storage
 func (db *Database) Get(id string) (string, error) {
 	if db.StoreInPg {
 		var url string
@@ -187,6 +198,7 @@ func (db *Database) Get(id string) (string, error) {
 	return "", common.ErrUnableToFindURL
 }
 
+// GetUserURL receive all user urls by userID
 func (db *Database) GetUserURL(userID string) ([]*UserItem, error) {
 	if db.StoreInPg {
 		userURLs := make([]*UserItem, 0)
@@ -226,15 +238,18 @@ func (db *Database) GetUserURL(userID string) ([]*UserItem, error) {
 	return db.UserItems[userID], nil
 }
 
+// RestoreItems restore items from file to in-mem storage
 func (db *Database) RestoreItems() error {
 	err := db.Consumer.decoder.Decode(&db.Items)
 	return err
 }
 
+// Ping postgres health check
 func (db *Database) Ping() error {
 	return db.PGConn.Ping()
 }
 
+// CreateItems batch insert items to postgres
 func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]BatchItemResponse, error) {
 	ctx := context.Background()
 	tx, err := db.PGConn.Begin()
@@ -288,6 +303,7 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 	return batchItemsResponse, nil
 }
 
+// UpdateItems batch update items in postgres
 func (db *Database) UpdateItems(itemsIDs []string) error {
 	formattedItems := make([]string, 0, len(itemsIDs))
 
@@ -308,6 +324,7 @@ func (db *Database) UpdateItems(itemsIDs []string) error {
 	return nil
 }
 
+//InitDB create DB repo and initialize it by config
 func InitDB() (*Database, error) {
 	storeInPg := len(common.Cfg.DatabaseDSN) > 0
 	storeInFile := len(common.Cfg.FileStoragePath) > 0

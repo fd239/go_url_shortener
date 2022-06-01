@@ -11,6 +11,7 @@ import (
 
 var CryptURL *CipherCrypt
 
+// CipherCrypt struct for Decrypting
 type CipherCrypt struct {
 	nonce  []byte
 	aesGCM cipher.AEAD

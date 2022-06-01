@@ -28,16 +28,6 @@ func getJSONRequest() *bytes.Buffer {
 	return &buf
 }
 
-func getJSONDeleteRequest() *bytes.Buffer {
-	var buf bytes.Buffer
-	req := []string{common.TestShortID}
-	if err := json.NewEncoder(&buf).Encode(req); err != nil {
-		log.Println("JSON encode error")
-	}
-
-	return &buf
-}
-
 func getJSONResponse() string {
 	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID)}
 	b, err := json.Marshal(res)

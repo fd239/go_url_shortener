@@ -33,6 +33,7 @@ func CreateRouter() *chi.Mux {
 	return r
 }
 
+// NewServer creating server instance and initialize store
 func NewServer(address string, baseURL string) (*server, error) {
 	var err error
 	handlers.Store, err = storage.InitDB()
@@ -45,6 +46,7 @@ func NewServer(address string, baseURL string) (*server, error) {
 	}, nil
 }
 
+// Start router create and server start
 func (s *server) Start() error {
 	r := CreateRouter()
 	return http.ListenAndServe(s.address, r)
