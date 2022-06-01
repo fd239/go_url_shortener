@@ -14,8 +14,8 @@ import (
 	"strings"
 )
 
-const PostgreSQLSuccessful = 100000
-const PostgreSQLDuplicate = 100001
+const PostgresSQLSuccessful = 100000
+const PostgresSQLDuplicate = 100001
 
 type BatchItemRequest struct {
 	CorrelationID string `json:"correlation_id" db:"id"`
@@ -148,7 +148,7 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 			if err != nil {
 				log.Println("rows scan error: ", err)
 			}
-			if insertResult == PostgreSQLDuplicate {
+			if insertResult == PostgresSQLDuplicate {
 				return shortURL, common.ErrOriginalURLConflict
 			}
 		}

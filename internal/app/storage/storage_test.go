@@ -240,7 +240,7 @@ func TestInsertURLOK(t *testing.T) {
 	}
 	defer conn.Close()
 
-	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLSuccessful)
+	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgresSQLSuccessful)
 	mock.ExpectQuery(regexp.QuoteMeta(insertStmt)).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
 
 	var db = &Database{
@@ -273,7 +273,7 @@ func TestInsertDuplicateErr(t *testing.T) {
 	}
 	defer conn.Close()
 
-	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgreSQLDuplicate)
+	rows := sqlmock.NewRows([]string{"shortURL", "insertResult"}).AddRow(common.TestShortID, PostgresSQLDuplicate)
 	mock.ExpectQuery(regexp.QuoteMeta(insertStmt)).WithArgs(common.TestURL, common.TestShortID, testUserID).WillReturnRows(rows)
 
 	var db = &Database{
