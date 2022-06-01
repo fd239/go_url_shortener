@@ -178,3 +178,16 @@ func BenchmarkHandlerGetURL(b *testing.B) {
 		result.Body.Close()
 	}
 }
+
+func ExampleSaveShortURL() {
+	w := httptest.NewRecorder()
+	router := CreateRouter()
+
+	router.HandleFunc("/", handlers.SaveShortURL)
+	handlers.Store, _ = storage.InitDB()
+
+	r, _ := http.NewRequest("POST", "/", strings.NewReader(common.TestURL))
+	router.ServeHTTP(w, r)
+	result := w.Result()
+	result.Body.Close()
+}
