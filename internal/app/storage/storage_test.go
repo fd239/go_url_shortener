@@ -379,7 +379,7 @@ func TestGetUrlPostgres(t *testing.T) {
 
 func TestGetUserUrlPostgres(t *testing.T) {
 	type args struct {
-		userId string
+		userID string
 	}
 	tests := []struct {
 		name     string
@@ -390,7 +390,7 @@ func TestGetUserUrlPostgres(t *testing.T) {
 	}{
 		{
 			name: "OK",
-			args: args{userId: testUserID},
+			args: args{userID: testUserID},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				rows := sqlmock.NewRows([]string{"OriginalURL", "ShortURL"}).AddRow(common.TestURL, common.TestShortID)
 				mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnRows(rows)
@@ -404,7 +404,7 @@ func TestGetUserUrlPostgres(t *testing.T) {
 		},
 		{
 			name: "Error. Rows scan error",
-			args: args{userId: testUserID},
+			args: args{userID: testUserID},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				rows := sqlmock.NewRows([]string{"test"}).AddRow("test")
 				mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnRows(rows)
@@ -415,7 +415,7 @@ func TestGetUserUrlPostgres(t *testing.T) {
 		},
 		{
 			name: "Error. Query error",
-			args: args{userId: testUserID},
+			args: args{userID: testUserID},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnError(fmt.Errorf("some error"))
 				return mock
@@ -432,12 +432,12 @@ func TestGetUserUrlPostgres(t *testing.T) {
 
 			tt.initMock(mock)
 
-			got, err := testDB.GetUserURL(tt.args.userId)
+			got, err := testDB.GetUserURL(tt.args.userID)
 
-			if !tt.wantErr(t, err, fmt.Sprintf("GetUserURL()")) {
+			if !tt.wantErr(t, err, "GetUserURL()") {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "GetAvailableItems()")
+			assert.Equalf(t, tt.want, got, "GetUserURL()")
 
 			// we make sure that all expectations were met
 			if err = mock.ExpectationsWereMet(); err != nil {
