@@ -31,7 +31,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		if tokenCookie, err := r.Cookie("token"); err == nil {
 			decryptedUserID, err = crypt.Decrypt(tokenCookie.Value)
 			if err != nil {
-				log.Printf("Decrypt error: %v", err)
+				log.Printf("Decrypt error: %v\n", err)
 				http.Error(w, common.ErrUserCookie.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -65,7 +65,7 @@ func DecompressMiddleware(next http.Handler) http.Handler {
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
 			if err != nil {
-				log.Printf("gzip body decode error: %v\n", err)
+				log.Printf("gzip body decode error: %v", err)
 				http.Error(w, common.ErrGzipRead.Error(), http.StatusInternalServerError)
 				return
 			}
