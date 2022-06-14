@@ -30,13 +30,13 @@ func ExampleSaveShortURL() {
 		log.Fatalf("Example body read error")
 	}
 	fmt.Printf("Code: %v\n", result.StatusCode)
-	fmt.Printf("Short URL: %v\n", fmt.Sprintf("%s/%s", common.Cfg.BaseURL, string(b)))
+	fmt.Printf("Short URL: %v\n", fmt.Sprintf("http://localhost:8080%s", string(b)))
 	// Output:
 	// Code: 201
-	// Short URL: http://localhost:8080/88d2d0f8fe07c98da23165c7a8a7acae
+	// Short URL: http://localhost:8080/a7a40cddf446bc419af5737fc92f1757
 }
 
-func ExampleGetShortURL() {
+func ExampleGetURL() {
 	w := httptest.NewRecorder()
 	router := CreateRouter()
 	r, _ := http.NewRequest("GET", "/"+common.TestShortID, nil)
