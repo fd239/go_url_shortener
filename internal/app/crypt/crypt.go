@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/hex"
-	"fmt"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"log"
 )
@@ -24,14 +23,14 @@ func Decrypt(userID string) (string, error) {
 	}
 	b, err := hex.DecodeString(userID)
 	if err != nil {
-		log.Println(fmt.Sprintf("Decrypt decode string error: %v", err))
+		log.Printf("Decrypt decode string error: %v", err)
 		return "", err
 	}
 
 	decrypted, terr := CryptURL.aesGCM.Open(nil, CryptURL.nonce, b, nil)
 
 	if terr != nil {
-		log.Println(fmt.Sprintf("aesGCM open error: %v", terr))
+		log.Println("aesGCM open error: %v", terr)
 	}
 
 	return string(decrypted), err

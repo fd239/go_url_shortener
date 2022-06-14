@@ -27,15 +27,11 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 // AuthMiddleware auth to service by token in cookie
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//slice := make([]string, 0)
-		//for i := 0; i < 100; i++ {
-		//	slice = append(slice, string(i))
-		//}
 		decryptedUserID := ""
 		if tokenCookie, err := r.Cookie("token"); err == nil {
 			decryptedUserID, err = crypt.Decrypt(tokenCookie.Value)
 			if err != nil {
-				log.Println(fmt.Sprintf("Decrypt error: %v", err))
+				log.Printf("Decrypt error: %v", err)
 				http.Error(w, common.ErrUserCookie.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -44,7 +40,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			decryptedUserID = uuid.NewString()
 			encryptedUserID, err := crypt.Encrypt(decryptedUserID)
 			if err != nil {
-				log.Println(fmt.Sprintf("Crypt new user encrypt error: %v", err))
+				log.Printf("Crypt new user encrypt error: %v", err)
 				http.Error(w, common.ErrUserCookie.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -69,7 +65,7 @@ func DecompressMiddleware(next http.Handler) http.Handler {
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
 			if err != nil {
-				log.Println(fmt.Sprintf("gzip body decode error: %v\n", err))
+				log.Printf("gzip body decode error: %v\n", err)
 				http.Error(w, common.ErrGzipRead.Error(), http.StatusInternalServerError)
 				return
 			}
