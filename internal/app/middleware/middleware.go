@@ -27,6 +27,10 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 // AuthMiddleware auth to service by token in cookie
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//slice := make([]string, 0)
+		//for i := 0; i < 100; i++ {
+		//	slice = append(slice, string(i))
+		//}
 		decryptedUserID := ""
 		if tokenCookie, err := r.Cookie("token"); err == nil {
 			decryptedUserID, err = crypt.Decrypt(tokenCookie.Value)

@@ -6,6 +6,7 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"net/http"
+	_ "net/http/pprof"
 )
 
 type Server interface {

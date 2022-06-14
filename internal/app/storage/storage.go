@@ -36,14 +36,23 @@ type UserItem struct {
 	OriginalURL string `json:"original_url" db:"original_url"`
 }
 
+type Item struct {
+	ShortURL    string
+	OriginalURL string
+	Deleted     bool
+	User        string
+}
+
 //Database repo struct with all possible options: im-mem, file and pg
 type Database struct {
 	Items       map[string]string
 	UserItems   map[string][]*UserItem //map[userID][]UserItem
+	ArrayItems  []*Item
 	PGConn      *sql.DB
 	Filename    string
 	StoreInFile bool
 	StoreInPg   bool
+	StoreInArr  bool
 	Producer    *producer
 	Consumer    *consumer
 }
@@ -137,6 +146,15 @@ func (db *Database) Insert(item string, userID string) (string, error) {
 		}
 	}
 
+	if db.StoreInArr {
+		db.ArrayItems = append(db.ArrayItems, &Item{
+			ShortURL:    hashString,
+			OriginalURL: item,
+			Deleted:     false,
+			User:        userID,
+		})
+	}
+
 	if db.StoreInPg {
 		rows, err := db.PGConn.Query(insertStmt, item, hashString, userID)
 		if err != nil {
@@ -191,6 +209,18 @@ func (db *Database) Get(id string) (string, error) {
 		return url, nil
 	}
 
+	if db.StoreInArr {
+		for _, item := range db.ArrayItems {
+			if item.ShortURL == id {
+				if item.Deleted {
+					return "", common.ErrURLDeleted
+				}
+				return item.OriginalURL, nil
+			}
+		}
+		return "", common.ErrUnableToFindURL
+	}
+
 	if result, ok := db.Items[id]; ok {
 		return result, nil
 	}
@@ -233,6 +263,22 @@ func (db *Database) GetUserURL(userID string) ([]*UserItem, error) {
 		}
 
 		return userURLs, nil
+	}
+
+	if db.StoreInArr {
+		userURLs := make([]*UserItem, 0)
+		for _, item := range db.ArrayItems {
+			if item.User == userID {
+				if !item.Deleted {
+					userURLs = append(userURLs, &UserItem{
+						ShortURL:    item.ShortURL,
+						OriginalURL: item.OriginalURL,
+					})
+				}
+				return userURLs, nil
+			}
+		}
+		return nil, nil
 	}
 
 	return db.UserItems[userID], nil
@@ -333,6 +379,7 @@ func InitDB() (*Database, error) {
 		StoreInFile: storeInFile,
 		StoreInPg:   storeInPg,
 		Items:       make(map[string]string),
+		ArrayItems:  make([]*Item, 0),
 		UserItems:   make(map[string][]*UserItem),
 		Filename:    common.Cfg.FileStoragePath,
 	}
@@ -388,5 +435,4 @@ func InitDB() (*Database, error) {
 	}
 
 	return &DB, nil
-
 }

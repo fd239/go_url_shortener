@@ -56,6 +56,8 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 		Filename    string
 		StoreInFile bool
 		StoreInPg   bool
+		StoreInArr  bool
+		ArrayItems  []*Item
 		Producer    *producer
 		Consumer    *consumer
 	}
@@ -83,6 +85,20 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 			common.TestShortID,
 			assert.NoError,
 		},
+		{
+			"OK Arr",
+			fields{
+				ArrayItems:  []*Item{{common.TestShortID, common.TestURL, false, testUserID}},
+				Filename:    common.TestDBName,
+				StoreInFile: false,
+				StoreInArr:  true,
+				Producer:    nil,
+				Consumer:    nil,
+			},
+			args{common.TestShortID},
+			common.TestURL,
+			assert.NoError,
+		},
 	}
 
 	for _, tt := range tests {
@@ -93,6 +109,8 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 				StoreInFile: tt.fields.StoreInFile,
 				Producer:    tt.fields.Producer,
 				Consumer:    tt.fields.Consumer,
+				ArrayItems:  tt.fields.ArrayItems,
+				StoreInArr:  tt.fields.StoreInArr,
 			}
 
 			got, err := db.Get(tt.args.url)
@@ -151,6 +169,20 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 			"",
 			assert.Error,
 		},
+		{
+			"OK",
+			fields{
+				Items:       map[string]string{common.TestShortID: common.TestURL},
+				Filename:    common.TestDBName,
+				StoreInFile: true,
+				StoreInPg:   false,
+				Producer:    getProducer(),
+				Consumer:    getConsumer(),
+			},
+			args{common.TestShortID},
+			common.TestURL,
+			assert.NoError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -174,10 +206,12 @@ func TestDatabase_Insert(t *testing.T) {
 	type fields struct {
 		Items       map[string]string
 		UserItems   map[string][]*UserItem
+		ArrayItems  []*Item
 		PGConn      *sql.DB
 		Filename    string
 		StoreInFile bool
 		StoreInPg   bool
+		StoreInArr  bool
 		Producer    *producer
 		Consumer    *consumer
 	}
@@ -230,6 +264,26 @@ func TestDatabase_Insert(t *testing.T) {
 			want:    common.TestShortID,
 			wantErr: assert.NoError,
 		},
+		{
+			name: "OK IN array",
+			fields: fields{
+				Items:       map[string]string{},
+				UserItems:   map[string][]*UserItem{},
+				PGConn:      nil,
+				Filename:    "",
+				StoreInFile: false,
+				StoreInPg:   false,
+				StoreInArr:  true,
+				Producer:    nil,
+				Consumer:    nil,
+			},
+			args: args{
+				item:   common.TestURL,
+				userID: testUserID,
+			},
+			want:    common.TestShortID,
+			wantErr: assert.NoError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -242,6 +296,7 @@ func TestDatabase_Insert(t *testing.T) {
 				StoreInPg:   tt.fields.StoreInPg,
 				Producer:    tt.fields.Producer,
 				Consumer:    tt.fields.Consumer,
+				StoreInArr:  tt.fields.StoreInArr,
 			}
 			got, err := db.Insert(tt.args.item, tt.args.userID)
 			if !tt.wantErr(t, err, fmt.Sprintf("Insert(%v, %v)", tt.args.item, tt.args.userID)) {
@@ -447,4 +502,48 @@ func TestGetUserUrlPostgres(t *testing.T) {
 		})
 	}
 
+}
+
+func BenchmarkSaveURL_Arr(b *testing.B) {
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		ArrayItems:  []*Item{},
+		PGConn:      nil,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInArr:  true,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		db.Insert(common.TestURL, testUserID)
+	}
+}
+
+func BenchmarkSaveURL_Map(b *testing.B) {
+
+	var db = &Database{
+		Items:       map[string]string{},
+		UserItems:   map[string][]*UserItem{},
+		ArrayItems:  []*Item{},
+		PGConn:      nil,
+		Filename:    "",
+		StoreInFile: false,
+		StoreInArr:  false,
+		Producer:    nil,
+		Consumer:    nil,
+	} // now we execute our method
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		db.Insert(common.TestURL, testUserID)
+	}
 }
