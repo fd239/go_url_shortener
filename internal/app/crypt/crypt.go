@@ -30,7 +30,7 @@ func Decrypt(userID string) (string, error) {
 	decrypted, terr := CryptURL.aesGCM.Open(nil, CryptURL.nonce, b, nil)
 
 	if terr != nil {
-		log.Println("aesGCM open error: %v", terr)
+		log.Printf("aesGCM open error: %v", terr)
 	}
 
 	return string(decrypted), err
