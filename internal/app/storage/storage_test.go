@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/fd239/go_url_shortener/internal/app/common"
@@ -12,6 +13,7 @@ import (
 )
 
 var testUserID = "testUser"
+var testItemId = "123"
 
 func getProducer() *producer {
 	prod, err := NewProducer(common.TestDBName)
@@ -99,6 +101,20 @@ func TestDatabase_SaveShortRoute(t *testing.T) {
 			common.TestURL,
 			assert.NoError,
 		},
+		{
+			"Error Arr deleted",
+			fields{
+				ArrayItems:  []*Item{{common.TestShortID, common.TestURL, true, testUserID}},
+				Filename:    common.TestDBName,
+				StoreInFile: false,
+				StoreInArr:  true,
+				Producer:    nil,
+				Consumer:    nil,
+			},
+			args{common.TestShortID},
+			"",
+			assert.Error,
+		},
 	}
 
 	for _, tt := range tests {
@@ -168,20 +184,6 @@ func TestDatabase_GetShortRoute(t *testing.T) {
 			args{common.TestURL},
 			"",
 			assert.Error,
-		},
-		{
-			"OK",
-			fields{
-				Items:       map[string]string{common.TestShortID: common.TestURL},
-				Filename:    common.TestDBName,
-				StoreInFile: true,
-				StoreInPg:   false,
-				Producer:    getProducer(),
-				Consumer:    getConsumer(),
-			},
-			args{common.TestShortID},
-			common.TestURL,
-			assert.NoError,
 		},
 	}
 	for _, tt := range tests {
@@ -384,7 +386,7 @@ func TestGetUrlPostgres(t *testing.T) {
 		args     args
 		initMock func(sqlmock.Sqlmock) sqlmock.Sqlmock
 		want     string
-		wantErr  error
+		wantErr  assert.ErrorAssertionFunc
 	}{
 		{
 			name: "OK",
@@ -395,7 +397,7 @@ func TestGetUrlPostgres(t *testing.T) {
 				return mock
 			},
 			want:    common.TestURL,
-			wantErr: nil,
+			wantErr: assert.NoError,
 		},
 		{
 			name: "Error. Deleted",
@@ -406,7 +408,17 @@ func TestGetUrlPostgres(t *testing.T) {
 				return mock
 			},
 			want:    "",
-			wantErr: common.ErrURLDeleted,
+			wantErr: assert.Error,
+		},
+		{
+			name: "Query error",
+			args: args{id: common.TestShortID},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectQuery(regexp.QuoteMeta(getOriginalURLStmt)).WithArgs(common.TestShortID).WillReturnError(errors.New("test error"))
+				return mock
+			},
+			want:    "",
+			wantErr: assert.Error,
 		},
 	}
 
@@ -419,8 +431,10 @@ func TestGetUrlPostgres(t *testing.T) {
 
 			got, err := testDB.Get(tt.args.id)
 
-			assert.ErrorIs(t, err, tt.wantErr)
-			assert.Equal(t, got, tt.want)
+			if !tt.wantErr(t, err, fmt.Sprintf("Get(%v)", tt.args.id)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "Get(%v, %v)", tt.args.id)
 
 			// we make sure that all expectations were met
 			if err = mock.ExpectationsWereMet(); err != nil {
@@ -478,6 +492,18 @@ func TestGetUserUrlPostgres(t *testing.T) {
 			want:    nil,
 			wantErr: assert.Error,
 		},
+		{
+			name: "Row error",
+			args: args{userID: testUserID},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				rows := sqlmock.NewRows([]string{"OriginalURL", "ShortURL"}).AddRow(common.TestURL, common.TestShortID)
+				rows.RowError(0, errors.New("test error"))
+				mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnRows(rows)
+				return mock
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
 	}
 
 	for _, tt := range tests {
@@ -498,10 +524,65 @@ func TestGetUserUrlPostgres(t *testing.T) {
 			if err = mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("there were unfulfilled expectations: %s", err)
 			}
-
 		})
 	}
 
+}
+
+func TestCreateItemsPostgres(t *testing.T) {
+	type args struct {
+		items  []BatchItemRequest
+		userID string
+	}
+	tests := []struct {
+		name     string
+		args     args
+		initMock func(sqlmock.Sqlmock) sqlmock.Sqlmock
+		want     []BatchItemResponse
+		wantErr  assert.ErrorAssertionFunc
+	}{
+		{
+			name: "OK",
+			args: args{userID: testUserID, items: []BatchItemRequest{{
+				CorrelationID: testItemId,
+				ShortURL:      common.TestShortID,
+				OriginalURL:   common.TestURL,
+			}}},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectBegin()
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemId, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+				return mock
+			},
+			want: []BatchItemResponse{{
+				CorrelationID: testItemId,
+				ShortURL:      "/" + common.TestShortID,
+			}},
+			wantErr: assert.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testDB, mock := setupTestDatabase(t)
+			defer testDB.PGConn.Close()
+
+			tt.initMock(mock)
+
+			got, err := testDB.CreateItems(tt.args.items, tt.args.userID)
+
+			if !tt.wantErr(t, err, fmt.Sprintf("Create items(%v, %v)", tt.args.userID, tt.args.items)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "Create items(%v, %v)", tt.args.userID, tt.args.items)
+
+			// we make sure that all expectations were met
+			if err = mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled expectations: %s", err)
+			}
+
+		})
+	}
 }
 
 func BenchmarkSaveURL_Arr(b *testing.B) {
@@ -545,5 +626,82 @@ func BenchmarkSaveURL_Map(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		db.Insert(common.TestURL, testUserID)
+	}
+}
+
+func TestUpdateItemsPostgres(t *testing.T) {
+	type args struct {
+		itemsIDs []string
+	}
+	tests := []struct {
+		name     string
+		args     args
+		initMock func(sqlmock.Sqlmock) sqlmock.Sqlmock
+		wantErr  assert.ErrorAssertionFunc
+	}{
+		{
+			name: "OK",
+			args: args{itemsIDs: []string{testItemId}},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectExec(
+					regexp.QuoteMeta(
+						"UPDATE short_url SET deleted = true FROM ( VALUES " + fmt.Sprintf("('%s')", testItemId) + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;")).WillReturnResult(sqlmock.NewResult(1, 1))
+				return mock
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testDB, mock := setupTestDatabase(t)
+			defer testDB.PGConn.Close()
+
+			tt.initMock(mock)
+
+			err := testDB.UpdateItems(tt.args.itemsIDs)
+
+			if !tt.wantErr(t, err, "UpdateItems()") {
+				return
+			}
+
+			// we make sure that all expectations were met
+			if err = mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled expectations: %s", err)
+			}
+		})
+	}
+}
+
+func TestInitDB(t *testing.T) {
+	tests := []struct {
+		name    string
+		want    *Database
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "OK",
+			want: &Database{
+				Items:       map[string]string{},
+				UserItems:   map[string][]*UserItem{},
+				ArrayItems:  make([]*Item, 0),
+				PGConn:      nil,
+				Filename:    "",
+				StoreInFile: false,
+				StoreInPg:   false,
+				StoreInArr:  false,
+				Producer:    nil,
+				Consumer:    nil,
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := InitDB()
+			if !tt.wantErr(t, err, fmt.Sprintf("InitDB()")) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "InitDB()")
+		})
 	}
 }
