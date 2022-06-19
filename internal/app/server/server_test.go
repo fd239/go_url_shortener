@@ -137,3 +137,44 @@ func TestRouter(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkHandlerSaveURL(b *testing.B) {
+	w := httptest.NewRecorder()
+	router := CreateRouter()
+
+	router.HandleFunc("/", handlers.SaveShortURL)
+	handlers.Store, _ = storage.InitDB()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		r, _ := http.NewRequest("POST", "/", strings.NewReader(common.TestURL))
+		b.StartTimer()
+		router.ServeHTTP(w, r)
+		result := w.Result()
+		result.Body.Close()
+	}
+}
+
+func BenchmarkHandlerGetURL(b *testing.B) {
+	w := httptest.NewRecorder()
+	router := CreateRouter()
+
+	router.HandleFunc("/", handlers.GetURL)
+	handlers.Store, _ = storage.InitDB()
+	handlers.Store.Items[common.TestShortID] = common.TestURL
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		r, _ := http.NewRequest("GET", "/"+common.TestShortID, nil)
+		b.StartTimer()
+		router.ServeHTTP(w, r)
+		result := w.Result()
+		result.Body.Close()
+	}
+}
