@@ -311,10 +311,11 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 		}
 	}(tx)
 
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_url(id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;")
+	stmt, err := tx.PrepareContext(ctx, batchInsert)
 
 	if err != nil {
 		log.Println("PG prepare context error: ", err.Error())
+		tx.Rollback()
 		return nil, err
 	}
 
@@ -359,7 +360,6 @@ func (db *Database) UpdateItems(itemsIDs []string) error {
 	}
 
 	stmt := "UPDATE short_url SET deleted = true FROM ( VALUES " + strings.Join(formattedItems, ",") + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;"
-
 	_, err := db.PGConn.Exec(stmt)
 
 	if err != nil {

@@ -15,3 +15,4 @@ const insertStmt = `WITH e AS (
 
 const getOriginalURLStmt = `select original_url, deleted from short_url where short_url=$1`
 const getUserURL = `select original_url, short_url from short_url where user_id=$1`
+const batchInsert = `INSERT INTO short_url(id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = excluded.id RETURNING id;`
