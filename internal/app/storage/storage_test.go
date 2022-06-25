@@ -13,7 +13,7 @@ import (
 )
 
 var testUserID = "testUser"
-var testItemID = "1234"
+var testItemID = "123"
 
 func getProducer() *producer {
 	prod, err := NewProducer(common.TestDBName)
