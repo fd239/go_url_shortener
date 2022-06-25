@@ -68,7 +68,7 @@ func (s *server) Start() error {
 	r := CreateRouter()
 
 	srv := &http.Server{
-		Addr:    ":443",
+		Addr:    s.address,
 		Handler: r,
 	}
 
@@ -79,6 +79,7 @@ func (s *server) Start() error {
 			HostPolicy: autocert.HostWhitelist(s.address),
 		}
 
+		srv.Addr = ":443"
 		srv.TLSConfig = manager.TLSConfig()
 	}
 
