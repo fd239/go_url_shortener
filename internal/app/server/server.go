@@ -27,7 +27,7 @@ type Server interface {
 type server struct {
 	address string
 	baseURL string
-	useTls  bool
+	useTLS  bool
 }
 
 func CreateRouter() *chi.Mux {
@@ -47,7 +47,7 @@ func CreateRouter() *chi.Mux {
 }
 
 // NewServer creating server instance and initialize store
-func NewServer(address string, baseURL string, useTls bool) (*server, error) {
+func NewServer(address string, baseURL string, useTLS bool) (*server, error) {
 	var err error
 	handlers.Store, err = storage.InitDB()
 	if err != nil {
@@ -56,7 +56,7 @@ func NewServer(address string, baseURL string, useTls bool) (*server, error) {
 	return &server{
 		address: address,
 		baseURL: baseURL,
-		useTls:  useTls,
+		useTLS:  useTLS,
 	}, nil
 }
 
@@ -72,7 +72,7 @@ func (s *server) Start() error {
 		Handler: r,
 	}
 
-	if s.useTls {
+	if s.useTLS {
 		manager := &autocert.Manager{
 			Cache:      autocert.DirCache("cache-dir"),
 			Prompt:     autocert.AcceptTOS,
@@ -82,7 +82,7 @@ func (s *server) Start() error {
 		srv.TLSConfig = manager.TLSConfig()
 	}
 
-	if s.useTls {
+	if s.useTLS {
 		go log.Fatal(srv.ListenAndServeTLS(certFile, keyFile))
 	} else {
 		go log.Fatal(srv.ListenAndServe())
@@ -91,10 +91,9 @@ func (s *server) Start() error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
-	select {
-	case v := <-quit:
-		log.Printf("signal.Notify: %v", v)
-	}
+	v := <-quit
+
+	log.Printf("signal.Notify: %v", v)
 
 	if handlers.Store.PGConn != nil {
 		if err := handlers.Store.PGConn.Close(); err != nil {
