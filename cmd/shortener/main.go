@@ -24,7 +24,7 @@ func main() {
 		log.Fatalf("Init config error: %s", err.Error())
 	}
 
-	s, err := server.NewServer(config.Cfg.ServerAddress, config.Cfg.BaseURL, config.Cfg.UseTls)
+	s, err := server.NewServer(config.Cfg.ServerAddress, config.Cfg.BaseURL, config.Cfg.UseTLS)
 	if err != nil {
 		log.Fatalf("Server start error: %s", err.Error())
 	}
