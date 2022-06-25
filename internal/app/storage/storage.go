@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/fd239/go_url_shortener/config"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"log"
@@ -337,7 +338,7 @@ func (db *Database) CreateItems(items []BatchItemRequest, userID string) ([]Batc
 		}
 
 		batchItemResponse.CorrelationID = item.CorrelationID
-		batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)
+		batchItemResponse.ShortURL = fmt.Sprintf("%s/%s", config.Cfg.BaseURL, shortURL)
 
 		batchItemsResponse = append(batchItemsResponse, batchItemResponse)
 	}
@@ -372,8 +373,8 @@ func (db *Database) UpdateItems(itemsIDs []string) error {
 
 //InitDB create DB repo and initialize it by config
 func InitDB() (*Database, error) {
-	storeInPg := len(common.Cfg.DatabaseDSN) > 0
-	storeInFile := len(common.Cfg.FileStoragePath) > 0
+	storeInPg := len(config.Cfg.DatabaseDSN) > 0
+	storeInFile := len(config.Cfg.FileStoragePath) > 0
 
 	DB := Database{
 		StoreInFile: storeInFile,
@@ -381,17 +382,17 @@ func InitDB() (*Database, error) {
 		Items:       make(map[string]string),
 		ArrayItems:  make([]*Item, 0),
 		UserItems:   make(map[string][]*UserItem),
-		Filename:    common.Cfg.FileStoragePath,
+		Filename:    config.Cfg.FileStoragePath,
 	}
 
 	if storeInFile {
-		dataBaseProducer, err := NewProducer(common.Cfg.FileStoragePath)
+		dataBaseProducer, err := NewProducer(config.Cfg.FileStoragePath)
 
 		if err != nil {
 			log.Println("Error producer creation: ", err.Error())
 		}
 
-		dataBaseConsumer, err := NewConsumer(common.Cfg.FileStoragePath)
+		dataBaseConsumer, err := NewConsumer(config.Cfg.FileStoragePath)
 
 		if err != nil {
 			log.Println("Error consumer creation: ", err.Error())
@@ -408,7 +409,7 @@ func InitDB() (*Database, error) {
 	}
 
 	if storeInPg {
-		conn, err := sql.Open("pgx", common.Cfg.DatabaseDSN)
+		conn, err := sql.Open("pgx", config.Cfg.DatabaseDSN)
 		if err != nil {
 			log.Printf("Unable to connect to database: %v\n", err)
 		}
