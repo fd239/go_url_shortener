@@ -13,7 +13,7 @@ import (
 )
 
 var testUserID = "testUser"
-var testItemID = "123"
+var testItemId = "123"
 
 func getProducer() *producer {
 	prod, err := NewProducer(common.TestDBName)
@@ -544,18 +544,18 @@ func TestCreateItemsPostgres(t *testing.T) {
 		{
 			name: "OK",
 			args: args{userID: testUserID, items: []BatchItemRequest{{
-				CorrelationID: testItemID,
+				CorrelationID: testItemId,
 				ShortURL:      common.TestShortID,
 				OriginalURL:   common.TestURL,
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
-				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemId, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 				return mock
 			},
 			want: []BatchItemResponse{{
-				CorrelationID: testItemID,
+				CorrelationID: testItemId,
 				ShortURL:      "/" + common.TestShortID,
 			}},
 			wantErr: assert.NoError,
@@ -641,11 +641,11 @@ func TestUpdateItemsPostgres(t *testing.T) {
 	}{
 		{
 			name: "OK",
-			args: args{itemsIDs: []string{testItemID}},
+			args: args{itemsIDs: []string{testItemId}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectExec(
 					regexp.QuoteMeta(
-						"UPDATE short_url SET deleted = true FROM ( VALUES " + fmt.Sprintf("('%s')", testItemID) + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;")).WillReturnResult(sqlmock.NewResult(1, 1))
+						"UPDATE short_url SET deleted = true FROM ( VALUES " + fmt.Sprintf("('%s')", testItemId) + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;")).WillReturnResult(sqlmock.NewResult(1, 1))
 				return mock
 			},
 			wantErr: assert.NoError,
