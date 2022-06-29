@@ -415,22 +415,11 @@ func InitDB() (*Database, error) {
 		}
 
 		DB.PGConn = conn
-
-		stmt :=
-			`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-			CREATE TABLE IF NOT EXISTS short_url
-		(
-			id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
-			deleted      bool         DEFAULT    false,
-			original_url varchar(150) UNIQUE     NOT NULL,
-			short_url    varchar(50)             NOT NULL,
-			user_id      varchar(50)
-		)`
-
-		_, err = DB.PGConn.Exec(stmt)
+		_, err = DB.PGConn.Exec(initStmt)
 
 		if err != nil {
 			log.Println("short url table creation error: ", err.Error())
+			return nil, err
 		}
 
 	}
