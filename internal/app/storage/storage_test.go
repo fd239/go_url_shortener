@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/fd239/go_url_shortener/config"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -13,7 +14,9 @@ import (
 )
 
 var testUserID = "testUser"
-var testItemId = "123"
+var testItemID = "123"
+var testFilePath = "./TEST_DB_1.txt"
+var testError = errors.New("test error")
 
 func getProducer() *producer {
 	prod, err := NewProducer(common.TestDBName)
@@ -544,21 +547,81 @@ func TestCreateItemsPostgres(t *testing.T) {
 		{
 			name: "OK",
 			args: args{userID: testUserID, items: []BatchItemRequest{{
-				CorrelationID: testItemId,
+				CorrelationID: testItemID,
 				ShortURL:      common.TestShortID,
 				OriginalURL:   common.TestURL,
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
-				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemId, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 				return mock
 			},
 			want: []BatchItemResponse{{
-				CorrelationID: testItemId,
+				CorrelationID: testItemID,
 				ShortURL:      "/" + common.TestShortID,
 			}},
 			wantErr: assert.NoError,
+		},
+		{
+			name: "Expect begin error",
+			args: args{userID: testUserID, items: []BatchItemRequest{{
+				CorrelationID: testItemID,
+				ShortURL:      common.TestShortID,
+				OriginalURL:   common.TestURL,
+			}}},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectBegin().WillReturnError(testError)
+				return mock
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
+		{
+			name: "Expect prepare error",
+			args: args{userID: testUserID, items: []BatchItemRequest{{
+				CorrelationID: testItemID,
+				ShortURL:      common.TestShortID,
+				OriginalURL:   common.TestURL,
+			}}},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectBegin()
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).WillReturnError(testError)
+				return mock
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
+		{
+			name: "Expect context error",
+			args: args{userID: testUserID, items: []BatchItemRequest{{
+				CorrelationID: testItemID,
+				ShortURL:      common.TestShortID,
+				OriginalURL:   common.TestURL,
+			}}},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectBegin()
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnError(testError)
+				return mock
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
+		{
+			name: "Commit error",
+			args: args{userID: testUserID, items: []BatchItemRequest{{
+				CorrelationID: testItemID,
+				ShortURL:      common.TestShortID,
+				OriginalURL:   common.TestURL,
+			}}},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectBegin()
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit().WillReturnError(testError)
+				return mock
+			},
+			want:    nil,
+			wantErr: assert.Error,
 		},
 	}
 
@@ -641,11 +704,11 @@ func TestUpdateItemsPostgres(t *testing.T) {
 	}{
 		{
 			name: "OK",
-			args: args{itemsIDs: []string{testItemId}},
+			args: args{itemsIDs: []string{testItemID}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectExec(
 					regexp.QuoteMeta(
-						"UPDATE short_url SET deleted = true FROM ( VALUES " + fmt.Sprintf("('%s')", testItemId) + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;")).WillReturnResult(sqlmock.NewResult(1, 1))
+						"UPDATE short_url SET deleted = true FROM ( VALUES " + fmt.Sprintf("('%s')", testItemID) + ") AS update_values (shortURL) WHERE short_url.short_url = update_values.shortURL;")).WillReturnResult(sqlmock.NewResult(1, 1))
 				return mock
 			},
 			wantErr: assert.NoError,
@@ -675,33 +738,136 @@ func TestUpdateItemsPostgres(t *testing.T) {
 func TestInitDB(t *testing.T) {
 	tests := []struct {
 		name    string
-		want    *Database
 		wantErr assert.ErrorAssertionFunc
+		config  config.Config
 	}{
 		{
-			name: "OK",
-			want: &Database{
-				Items:       map[string]string{},
-				UserItems:   map[string][]*UserItem{},
-				ArrayItems:  make([]*Item, 0),
-				PGConn:      nil,
-				Filename:    "",
-				StoreInFile: false,
-				StoreInPg:   false,
-				StoreInArr:  false,
-				Producer:    nil,
-				Consumer:    nil,
+			name:    "OK",
+			wantErr: assert.NoError,
+		},
+		{
+			name: "OK with file",
+			config: config.Config{
+				FileStoragePath: testFilePath,
 			},
 			wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitDB()
+			config.Cfg = tt.config
+			_, err := InitDB()
 			if !tt.wantErr(t, err, "InitDB()") {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "InitDB()")
+		})
+	}
+}
+
+func TestInitDB_Postgres(t *testing.T) {
+	tests := []struct {
+		name     string
+		initMock func(sqlmock.Sqlmock) sqlmock.Sqlmock
+		wantErr  assert.ErrorAssertionFunc
+		config   config.Config
+	}{
+		{
+			name: "DSN error",
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				mock.ExpectExec(
+					regexp.QuoteMeta(initStmt)).WillReturnResult(sqlmock.NewResult(1, 1))
+				return mock
+			},
+			config: config.Config{
+				DatabaseDSN: "sqlmock_db_0",
+			},
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config.Cfg = tt.config
+			testDB, mock := setupTestDatabase(t)
+			defer testDB.PGConn.Close()
+
+			tt.initMock(mock)
+
+			_, err := InitDB()
+			if !tt.wantErr(t, err, "InitDB()") {
+				return
+			}
+		})
+	}
+}
+
+func TestDatabase_GetUserURL_Arr(t *testing.T) {
+	type fields struct {
+		Items       map[string]string
+		UserItems   map[string][]*UserItem
+		ArrayItems  []*Item
+		PGConn      *sql.DB
+		Filename    string
+		StoreInFile bool
+		StoreInPg   bool
+		StoreInArr  bool
+		Producer    *producer
+		Consumer    *consumer
+	}
+	type args struct {
+		userID string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []*UserItem
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "OK",
+			fields: fields{
+				Items:     map[string]string{},
+				UserItems: map[string][]*UserItem{},
+				ArrayItems: []*Item{{
+					ShortURL:    common.TestShortID,
+					OriginalURL: common.TestURL,
+					Deleted:     false,
+					User:        testUserID,
+				}},
+				PGConn:      nil,
+				Filename:    "",
+				StoreInFile: false,
+				StoreInArr:  true,
+				Producer:    nil,
+				Consumer:    nil,
+			},
+			args: args{testUserID},
+			want: []*UserItem{{
+				ShortURL:    common.TestShortID,
+				OriginalURL: common.TestURL,
+			}},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := &Database{
+				Items:       tt.fields.Items,
+				UserItems:   tt.fields.UserItems,
+				ArrayItems:  tt.fields.ArrayItems,
+				PGConn:      tt.fields.PGConn,
+				Filename:    tt.fields.Filename,
+				StoreInFile: tt.fields.StoreInFile,
+				StoreInPg:   tt.fields.StoreInPg,
+				StoreInArr:  tt.fields.StoreInArr,
+				Producer:    tt.fields.Producer,
+				Consumer:    tt.fields.Consumer,
+			}
+			got, err := db.GetUserURL(tt.args.userID)
+			if !tt.wantErr(t, err, fmt.Sprintf("GetUserURL(%v)", tt.args.userID)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "GetUserURL(%v)", tt.args.userID)
 		})
 	}
 }

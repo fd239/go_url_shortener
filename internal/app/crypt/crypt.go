@@ -4,7 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/hex"
-	"github.com/fd239/go_url_shortener/internal/app/common"
+	"github.com/fd239/go_url_shortener/config"
 	"log"
 )
 
@@ -49,7 +49,7 @@ func Encrypt(userID string) (string, error) {
 }
 
 func initCrypt() error {
-	aesblock, err := aes.NewCipher(common.SecretKey)
+	aesblock, err := aes.NewCipher(config.SecretKey)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func initCrypt() error {
 		return err
 	}
 
-	nonce := common.SecretKey[len(common.SecretKey)-aesgcm.NonceSize():]
+	nonce := config.SecretKey[len(config.SecretKey)-aesgcm.NonceSize():]
 
 	CryptURL = &CipherCrypt{
 		aesGCM: aesgcm,

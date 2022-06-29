@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/fd239/go_url_shortener/internal/app/common"
+	"github.com/fd239/go_url_shortener/config"
 	"github.com/fd239/go_url_shortener/internal/app/server"
 	"log"
 )
@@ -18,13 +18,13 @@ func main() {
 	fmt.Printf("Build date: %v\n", buildDate)
 	fmt.Printf("Build commit: %v\n", buildCommit)
 
-	err := common.InitConfig()
+	err := config.InitConfig()
 
 	if err != nil {
 		log.Fatalf("Init config error: %s", err.Error())
 	}
 
-	s, err := server.NewServer(common.Cfg.ServerAddress, common.Cfg.BaseURL)
+	s, err := server.NewServer(config.Cfg.ServerAddress, config.Cfg.BaseURL, config.Cfg.UseTLS)
 	if err != nil {
 		log.Fatalf("Server start error: %s", err.Error())
 	}

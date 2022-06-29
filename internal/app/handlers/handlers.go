@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/fd239/go_url_shortener/config"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
@@ -146,7 +147,7 @@ func GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	var baseURLItems []*storage.UserItem
 	for _, v := range userURLs {
-		baseURLItems = append(baseURLItems, &storage.UserItem{OriginalURL: v.OriginalURL, ShortURL: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, v.ShortURL)})
+		baseURLItems = append(baseURLItems, &storage.UserItem{OriginalURL: v.OriginalURL, ShortURL: fmt.Sprintf("%s/%s", config.Cfg.BaseURL, v.ShortURL)})
 	}
 
 	userURLsJSON, err := json.Marshal(baseURLItems)
@@ -198,7 +199,7 @@ func SaveShortURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
 
-	w.Write([]byte(fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)))
+	w.Write([]byte(fmt.Sprintf("%s/%s", config.Cfg.BaseURL, shortURL)))
 }
 
 // HandleURL save short URL received from POST request
@@ -228,7 +229,7 @@ func HandleURL(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusCreated
 	}
 
-	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, shortURL)}
+	response := ShortenResponse{Result: fmt.Sprintf("%s/%s", config.Cfg.BaseURL, shortURL)}
 
 	jsonResponse, jsonErr := json.Marshal(response)
 

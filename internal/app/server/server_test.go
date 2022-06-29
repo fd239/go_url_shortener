@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/fd239/go_url_shortener/config"
 	"github.com/fd239/go_url_shortener/internal/app/common"
 	"github.com/fd239/go_url_shortener/internal/app/handlers"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
@@ -29,7 +30,7 @@ func getJSONRequest() *bytes.Buffer {
 }
 
 func getJSONResponse() string {
-	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID)}
+	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", config.Cfg.BaseURL, common.TestShortID)}
 	b, err := json.Marshal(res)
 
 	if err != nil {
@@ -83,7 +84,7 @@ func TestRouter(t *testing.T) {
 		{
 			name: "POST 200",
 			args: args{http.MethodPost, "/", strings.NewReader(common.TestURL)},
-			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", common.Cfg.BaseURL, common.TestShortID), "", "text/plain; charset=utf-8"},
+			want: want{http.StatusCreated, fmt.Sprintf("%s/%s", config.Cfg.BaseURL, common.TestShortID), "", "text/plain; charset=utf-8"},
 		},
 		{
 			name: "POST 400 Empty body",
