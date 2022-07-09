@@ -16,7 +16,7 @@ import (
 var testUserID = "testUser"
 var testItemID = "123"
 var testFilePath = "./TEST_DB_1.txt"
-var testError = errors.New("test error")
+var errTest = errors.New("test error")
 
 func getProducer() *producer {
 	prod, err := NewProducer(common.TestDBName)
@@ -571,7 +571,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 				OriginalURL:   common.TestURL,
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
-				mock.ExpectBegin().WillReturnError(testError)
+				mock.ExpectBegin().WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
@@ -586,7 +586,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
-				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).WillReturnError(testError)
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
@@ -601,7 +601,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
-				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnError(testError)
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
@@ -617,7 +617,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
 				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
-				mock.ExpectCommit().WillReturnError(testError)
+				mock.ExpectCommit().WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
