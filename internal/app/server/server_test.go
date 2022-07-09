@@ -29,6 +29,16 @@ func getJSONRequest() *bytes.Buffer {
 	return &buf
 }
 
+func getUserUrlsRequest() *bytes.Buffer {
+	var buf bytes.Buffer
+	req := handlers.ShortenRequest{URL: common.TestURL}
+	if err := json.NewEncoder(&buf).Encode(req); err != nil {
+		log.Println("JSON encode error")
+	}
+
+	return &buf
+}
+
 func getJSONResponse() string {
 	res := handlers.ShortenResponse{Result: fmt.Sprintf("%s/%s", config.Cfg.BaseURL, common.TestShortID)}
 	b, err := json.Marshal(res)
@@ -111,6 +121,11 @@ func TestRouter(t *testing.T) {
 			args: args{http.MethodPost, "/api/shorten", getJSONRequest()},
 			want: want{http.StatusCreated, getJSONResponse(), "", "application/json; charset=UTF-8"},
 		},
+		{
+			name: "Delete user Urls. No Content",
+			args: args{http.MethodGet, "/api/user/urls", getJSONRequest()},
+			want: want{http.StatusNoContent, "", "", "text/plain; charset=utf-8"},
+		},
 	}
 
 	var err error
@@ -177,5 +192,39 @@ func BenchmarkHandlerGetURL(b *testing.B) {
 		router.ServeHTTP(w, r)
 		result := w.Result()
 		result.Body.Close()
+	}
+}
+
+func TestNewServer(t *testing.T) {
+	type args struct {
+		address string
+		baseURL string
+		useTLS  bool
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *server
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "OK",
+			args: args{"localhost:8000", "http://localhost:8080", false},
+			want: &server{
+				address: "localhost:8000",
+				baseURL: "http://localhost:8080",
+				useTLS:  false,
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewServer(tt.args.address, tt.args.baseURL, tt.args.useTLS)
+			if !tt.wantErr(t, err, fmt.Sprintf("NewServer(%v, %v, %v)", tt.args.address, tt.args.baseURL, tt.args.useTLS)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "NewServer(%v, %v, %v)", tt.args.address, tt.args.baseURL, tt.args.useTLS)
+		})
 	}
 }

@@ -871,3 +871,32 @@ func TestDatabase_GetUserURL_Arr(t *testing.T) {
 		})
 	}
 }
+
+func TestDatabase_Ping(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr assert.ErrorAssertionFunc
+		config  config.Config
+	}{
+		{
+			name: "OK",
+			config: config.Config{
+				DatabaseDSN: "sqlmock_db_0",
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config.Cfg = tt.config
+			testDB, _ := setupTestDatabase(t)
+			defer testDB.PGConn.Close()
+
+			err := testDB.Ping()
+			if !tt.wantErr(t, err, "InitDB()") {
+				return
+			}
+		})
+	}
+
+}
