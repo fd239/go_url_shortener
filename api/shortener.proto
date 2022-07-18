@@ -9,7 +9,7 @@ message PingRequest {
 }
 
 message PingResponse {
-  optional string error = 1;
+  string error = 1;
 }
 
 message GetUserUrlRequest {
@@ -17,31 +17,36 @@ message GetUserUrlRequest {
 }
 
 message GetUserUrlResponse {
-  string user_urls_json = 1;
+  string user_urls = 1;
+  string error = 2;
 }
 
 message DeleteUrlsRequest {
-  string urls_delete_json = 1;
+  string urls_delete = 1;
 }
 
 message DeleteUrlsResponse {
-  optional string error = 1;
+  string error = 1;
 }
 
 message BatchUrlsRequest {
   string batch_items = 1;
+  string user_id = 2;
 }
 
 message BatchUrlsResponse {
-  optional string error = 1;
+  string batch_urls = 1;
+  string error = 2;
 }
 
 message HandleUrlRequest {
   string url = 1;
+  string user_id = 2;
 }
 
 message HandleUrlResponse {
-  optional string error = 1;
+  string short_urls = 1;
+  string error = 2;
 }
 
 message GetUrlRequest {
@@ -49,18 +54,18 @@ message GetUrlRequest {
 }
 
 message GetUrlResponse {
-  optional string short_url = 1;
-  optional string error = 2;
+  string short_url = 1;
+  string error = 2;
 }
 
 message SaveShortUrlRequest {
-  optional string userID = 1;
-  optional string url = 2;
+  string userID = 1;
+  string url = 2;
 }
 
 message SaveShortUrlResponse {
-  optional string short_url = 1;
-  optional string error = 2;
+  string short_url = 1;
+  string error = 2;
 }
 
 
@@ -71,5 +76,5 @@ rpc DeleteUrls(DeleteUrlsRequest) returns (DeleteUrlsResponse);
 rpc BatchUrls(BatchUrlsRequest) returns (BatchUrlsResponse);
 rpc HandleUrl(HandleUrlRequest) returns (HandleUrlResponse);
 rpc GetUrl(GetUrlRequest) returns (GetUrlResponse);
-rpc SaveShortUrl(GetUrlRequest) returns (GetUrlResponse);
+rpc SaveShortUrl(SaveShortUrlRequest) returns (SaveShortUrlResponse);
 }

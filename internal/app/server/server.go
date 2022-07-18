@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/fd239/go_url_shortener/api"
 	"github.com/fd239/go_url_shortener/internal/app/handlers"
 	"github.com/fd239/go_url_shortener/internal/app/middleware"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
@@ -103,7 +104,9 @@ func (s *server) Start() error {
 		log.Println("GRPC failed to listen: ", err)
 		return err
 	}
-	//api.RegisterShortenerServer(grpcServer, consumer)
+
+	consumer := handlers.NewConsumer()
+	api.RegisterShortenerServer(grpcServer, consumer)
 
 	go log.Fatal(grpcServer.Serve(listener))
 
