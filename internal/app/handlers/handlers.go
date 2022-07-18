@@ -12,7 +12,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 )
 
 var Store *storage.Database
@@ -257,4 +259,80 @@ func Ping(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func GetStats(w http.ResponseWriter, r *http.Request) {
+	ts := config.Cfg.TrustedSubnet
+
+	if ts != "" {
+		log.Println("TS: " + ts)
+		_, ipv4Net, err := net.ParseCIDR(ts)
+		if err != nil {
+			log.Println("Can't parse CIDR")
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+
+		ip, err := getIP(r)
+		if err != nil {
+			log.Println("Can't parse IP")
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+
+		if !ipv4Net.Contains(ip) {
+			log.Println("Can't contain IP" + ip.String())
+			http.Error(w, "Can't contain IP"+ip.String(), http.StatusForbidden)
+			return
+		}
+	}
+
+	urlCount := Store.URLCount()
+	userCount := Store.UserCount()
+
+	result := struct {
+		Urls  int `json:"urls"`
+		Users int `json:"users"`
+	}{Urls: urlCount, Users: userCount}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Prepare response
+	w.Header().Add("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+}
+
+// getIP get current ip address for user
+func getIP(r *http.Request) (net.IP, error) {
+	addr := r.RemoteAddr
+
+	ip, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	ip1 := net.ParseIP(ip)
+
+	ip = r.Header.Get("X-Real-IP")
+	ip2 := net.ParseIP(ip)
+
+	if ip2 == nil {
+		ips := r.Header.Get("X-Forwarded-For")
+		splitIps := strings.Split(ips, ",")
+		ip = splitIps[0]
+		ip2 = net.ParseIP(ip)
+	}
+
+	if ip1.Equal(ip2) {
+		return ip1, nil
+	}
+
+	return nil, errors.New("no guaranteed ip")
 }

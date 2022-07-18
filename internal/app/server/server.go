@@ -6,8 +6,11 @@ import (
 	"github.com/fd239/go_url_shortener/internal/app/middleware"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"golang.org/x/crypto/acme/autocert"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -40,6 +43,7 @@ func CreateRouter() *chi.Mux {
 	r.Delete("/api/user/urls", handlers.DeleteURLs)
 	r.Post("/api/shorten/batch", handlers.BatchURLs)
 	r.Post("/api/shorten", handlers.HandleURL)
+	r.Get("/api/internal/stats", handlers.GetStats)
 	r.Get("/{id}", handlers.GetURL)
 	r.Post("/", handlers.SaveShortURL)
 
@@ -88,6 +92,20 @@ func (s *server) Start() error {
 	} else {
 		go log.Fatal(srv.ListenAndServe())
 	}
+
+	grpcServer := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
+
+	listener, err := net.Listen("tcp", "localhost:9000")
+	if err != nil {
+		log.Println("GRPC failed to listen: ", err)
+		return err
+	}
+	//api.RegisterShortenerServer(grpcServer, consumer)
+
+	go log.Fatal(grpcServer.Serve(listener))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)

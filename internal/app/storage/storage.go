@@ -426,3 +426,15 @@ func InitDB() (*Database, error) {
 
 	return &DB, nil
 }
+
+// URLCount get saved url in storage
+func (db *Database) URLCount() (counter int) {
+	db.PGConn.QueryRow("SELECT count(*) FROM short_url").Scan(&counter)
+	return
+}
+
+// UserCount get uniq url count in storage
+func (db *Database) UserCount() (counter int) {
+	db.PGConn.QueryRow("SELECT count(DISTINCT user_id) FROM short_url").Scan(&counter)
+	return
+}

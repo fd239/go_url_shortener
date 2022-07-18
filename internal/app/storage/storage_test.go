@@ -507,6 +507,18 @@ func TestGetUserUrlPostgres(t *testing.T) {
 			want:    nil,
 			wantErr: assert.Error,
 		},
+		{
+			name: "Row error",
+			args: args{userID: testUserID},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				rows := sqlmock.NewRows([]string{"OriginalURL", "ShortURL"}).AddRow(common.TestURL, common.TestShortID)
+				rows.RowError(0, errors.New("test error"))
+				mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnRows(rows)
+				return mock
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
 	}
 
 	for _, tt := range tests {
