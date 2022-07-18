@@ -89,9 +89,9 @@ func (s *server) Start() error {
 	}
 
 	if s.useTLS {
-		go log.Fatal(srv.ListenAndServeTLS(certFile, keyFile))
+		go srv.ListenAndServeTLS(certFile, keyFile)
 	} else {
-		go log.Fatal(srv.ListenAndServe())
+		go srv.ListenAndServe()
 	}
 
 	grpcServer := grpc.NewServer(
@@ -99,7 +99,7 @@ func (s *server) Start() error {
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 
-	listener, err := net.Listen("tcp", "localhost:9000")
+	listener, err := net.Listen("tcp", ":3201")
 	if err != nil {
 		log.Println("GRPC failed to listen: ", err)
 		return err
