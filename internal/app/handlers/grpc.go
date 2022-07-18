@@ -120,6 +120,12 @@ func (c *consumer) HandleUrl(_ context.Context, req *api.HandleUrlRequest) (resp
 	var shorten ShortenRequest
 	err = json.Unmarshal([]byte(req.Url), &shorten)
 
+	if err != nil {
+		log.Printf("url unmarshal error: %v\n", err)
+		resp.Error = err.Error()
+		return
+	}
+
 	shortURL, err := Store.Insert(shorten.URL, fmt.Sprintf("%v", req.UserId))
 
 	if err != nil {
