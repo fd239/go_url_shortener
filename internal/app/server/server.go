@@ -99,7 +99,7 @@ func (s *server) Start() error {
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 
-	listener, err := net.Listen("tcp", ":3201")
+	listener, err := net.Listen("tcp", ":9000")
 	if err != nil {
 		log.Println("GRPC failed to listen: ", err)
 		return err
