@@ -16,7 +16,7 @@ import (
 var testUserID = "testUser"
 var testItemID = "123"
 var testFilePath = "./TEST_DB_1.txt"
-var testError = errors.New("test error")
+var errTest = errors.New("test error")
 
 func getProducer() *producer {
 	prod, err := NewProducer(common.TestDBName)
@@ -507,6 +507,18 @@ func TestGetUserUrlPostgres(t *testing.T) {
 			want:    nil,
 			wantErr: assert.Error,
 		},
+		{
+			name: "Row error",
+			args: args{userID: testUserID},
+			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
+				rows := sqlmock.NewRows([]string{"OriginalURL", "ShortURL"}).AddRow(common.TestURL, common.TestShortID)
+				rows.RowError(0, errors.New("test error"))
+				mock.ExpectQuery(regexp.QuoteMeta(getUserURL)).WithArgs(testUserID).WillReturnRows(rows)
+				return mock
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
 	}
 
 	for _, tt := range tests {
@@ -571,7 +583,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 				OriginalURL:   common.TestURL,
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
-				mock.ExpectBegin().WillReturnError(testError)
+				mock.ExpectBegin().WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
@@ -586,7 +598,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
-				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).WillReturnError(testError)
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
@@ -601,7 +613,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 			}}},
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
-				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnError(testError)
+				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
@@ -617,7 +629,7 @@ func TestCreateItemsPostgres(t *testing.T) {
 			initMock: func(mock sqlmock.Sqlmock) sqlmock.Sqlmock {
 				mock.ExpectBegin()
 				mock.ExpectPrepare(regexp.QuoteMeta(batchInsert)).ExpectExec().WithArgs(testItemID, common.TestShortID, common.TestURL, testUserID).WillReturnResult(sqlmock.NewResult(1, 1))
-				mock.ExpectCommit().WillReturnError(testError)
+				mock.ExpectCommit().WillReturnError(errTest)
 				return mock
 			},
 			want:    nil,
@@ -870,4 +882,33 @@ func TestDatabase_GetUserURL_Arr(t *testing.T) {
 			assert.Equalf(t, tt.want, got, "GetUserURL(%v)", tt.args.userID)
 		})
 	}
+}
+
+func TestDatabase_Ping(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr assert.ErrorAssertionFunc
+		config  config.Config
+	}{
+		{
+			name: "OK",
+			config: config.Config{
+				DatabaseDSN: "sqlmock_db_0",
+			},
+			wantErr: assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config.Cfg = tt.config
+			testDB, _ := setupTestDatabase(t)
+			defer testDB.PGConn.Close()
+
+			err := testDB.Ping()
+			if !tt.wantErr(t, err, "InitDB()") {
+				return
+			}
+		})
+	}
+
 }

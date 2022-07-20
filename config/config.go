@@ -14,6 +14,7 @@ type Config struct {
 	DatabaseDSN     string `env:"DATABASE_DSN"` //envDefault:"postgres://fd239:fd239@localhost:5432/short_url"
 	UseTLS          bool   `env:"USE_TLS" envDefault:"false"`
 	JSONCfgFilePath string `env:"CONFIG" envDefault:"./config/cfg.json"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET" envDefault:""`
 }
 
 type JSONConfig struct {
@@ -22,6 +23,7 @@ type JSONConfig struct {
 	FileStoragePath string `json:"file_storage_path"`
 	DatabaseDSN     string `json:"database-dsn"`
 	UseTLS          bool   `json:"use_tls"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 var Cfg Config
@@ -42,6 +44,7 @@ func InitConfig() error {
 	DatabaseDSNPointer := flag.String("d", Cfg.DatabaseDSN, "PostgreSQL database credentials")
 	UseTLS := flag.Bool("s", Cfg.UseTLS, "TLS server")
 	JSONCfgFilePath := flag.String("c", Cfg.JSONCfgFilePath, "JSON config")
+	trustedSubnet := flag.String("t", Cfg.TrustedSubnet, "Trusted subnet")
 
 	flag.Parse()
 
@@ -51,6 +54,7 @@ func InitConfig() error {
 	Cfg.DatabaseDSN = *DatabaseDSNPointer
 	Cfg.UseTLS = *UseTLS
 	Cfg.JSONCfgFilePath = *JSONCfgFilePath
+	Cfg.TrustedSubnet = *trustedSubnet
 
 	if Cfg.JSONCfgFilePath == "" {
 		return nil
@@ -87,6 +91,10 @@ func InitConfig() error {
 
 	if !Cfg.UseTLS {
 		Cfg.UseTLS = jsonCfg.UseTLS
+	}
+
+	if Cfg.TrustedSubnet == "" {
+		Cfg.TrustedSubnet = jsonCfg.TrustedSubnet
 	}
 
 	return nil

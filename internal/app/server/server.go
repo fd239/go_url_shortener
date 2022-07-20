@@ -2,12 +2,16 @@ package server
 
 import (
 	"context"
+	"github.com/fd239/go_url_shortener/api"
 	"github.com/fd239/go_url_shortener/internal/app/handlers"
 	"github.com/fd239/go_url_shortener/internal/app/middleware"
 	"github.com/fd239/go_url_shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"golang.org/x/crypto/acme/autocert"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -40,6 +44,7 @@ func CreateRouter() *chi.Mux {
 	r.Delete("/api/user/urls", handlers.DeleteURLs)
 	r.Post("/api/shorten/batch", handlers.BatchURLs)
 	r.Post("/api/shorten", handlers.HandleURL)
+	r.Get("/api/internal/stats", handlers.GetStats)
 	r.Get("/{id}", handlers.GetURL)
 	r.Post("/", handlers.SaveShortURL)
 
@@ -84,10 +89,26 @@ func (s *server) Start() error {
 	}
 
 	if s.useTLS {
-		go log.Fatal(srv.ListenAndServeTLS(certFile, keyFile))
+		go srv.ListenAndServeTLS(certFile, keyFile)
 	} else {
-		go log.Fatal(srv.ListenAndServe())
+		go srv.ListenAndServe()
 	}
+
+	grpcServer := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
+
+	listener, err := net.Listen("tcp", ":9000")
+	if err != nil {
+		log.Println("GRPC failed to listen: ", err)
+		return err
+	}
+
+	consumer := handlers.NewConsumer()
+	api.RegisterShortenerServer(grpcServer, consumer)
+
+	go log.Fatal(grpcServer.Serve(listener))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)

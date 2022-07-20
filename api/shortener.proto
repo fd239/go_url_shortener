@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+option go_package = ".;api";
+
+package api;
+
+
+message PingRequest {
+}
+
+message PingResponse {
+  string error = 1;
+}
+
+message GetUserUrlRequest {
+  string user_id = 1;
+}
+
+message GetUserUrlResponse {
+  string user_urls = 1;
+  string error = 2;
+}
+
+message DeleteUrlsRequest {
+  string urls_delete = 1;
+}
+
+message DeleteUrlsResponse {
+  string error = 1;
+}
+
+message BatchUrlsRequest {
+  string batch_items = 1;
+  string user_id = 2;
+}
+
+message BatchUrlsResponse {
+  string batch_urls = 1;
+  string error = 2;
+}
+
+message HandleUrlRequest {
+  string url = 1;
+  string user_id = 2;
+}
+
+message HandleUrlResponse {
+  string short_urls = 1;
+  string error = 2;
+}
+
+message GetUrlRequest {
+  string id = 1;
+}
+
+message GetUrlResponse {
+  string short_url = 1;
+  string error = 2;
+}
+
+message SaveShortUrlRequest {
+  string userID = 1;
+  string url = 2;
+}
+
+message SaveShortUrlResponse {
+  string short_url = 1;
+  string error = 2;
+}
+
+
+service Shortener {
+rpc Ping(PingRequest) returns (PingResponse);
+rpc GetUserUrls(GetUserUrlRequest) returns (GetUserUrlResponse);
+rpc DeleteUrls(DeleteUrlsRequest) returns (DeleteUrlsResponse);
+rpc BatchUrls(BatchUrlsRequest) returns (BatchUrlsResponse);
+rpc HandleUrl(HandleUrlRequest) returns (HandleUrlResponse);
+rpc GetUrl(GetUrlRequest) returns (GetUrlResponse);
+rpc SaveShortUrl(SaveShortUrlRequest) returns (SaveShortUrlResponse);
+}

@@ -12,7 +12,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 )
 
 var Store *storage.Database
@@ -23,6 +25,11 @@ type ShortenRequest struct {
 
 type ShortenResponse struct {
 	Result string `json:"result"`
+}
+
+type trustedSubnetResponse struct {
+	Users int `json:"users"`
+	Urls  int `json:"urls"`
 }
 
 // BatchURLs save multiple urls to storage
@@ -257,4 +264,80 @@ func Ping(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func GetStats(w http.ResponseWriter, r *http.Request) {
+	trustedSubnet := config.Cfg.TrustedSubnet
+
+	if trustedSubnet == "" {
+		log.Println("Trusted Subnet not specified")
+		http.Error(w, "Trusted Subnet not specified", http.StatusForbidden)
+		return
+	}
+	_, ipNet, err := net.ParseCIDR(trustedSubnet)
+	if err != nil {
+		log.Println("Can't parse CIDR")
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	ip, err := getRequestIp(r)
+	if err != nil {
+		log.Println("Can't parse IP")
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	if !ipNet.Contains(ip) {
+		log.Println("Can't contain IP" + ip.String())
+		http.Error(w, "Can't contain IP"+ip.String(), http.StatusForbidden)
+		return
+	}
+
+	urls := Store.URLCount()
+	users := Store.UserCount()
+
+	response := trustedSubnetResponse{
+		Users: users,
+		Urls:  urls,
+	}
+
+	b, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Add("Accept", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(b)
+}
+
+func getRequestIp(r *http.Request) (net.IP, error) {
+	remoteAddr := r.RemoteAddr
+
+	ip, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	remoteIp := net.ParseIP(ip)
+
+	realIp := r.Header.Get("X-Real-IP")
+	parseIp := net.ParseIP(realIp)
+
+	if parseIp == nil {
+		frwIps := r.Header.Get("X-Forwarded-For")
+		splitIps := strings.Split(frwIps, ",")
+		ip = splitIps[0]
+		parseIp = net.ParseIP(ip)
+	}
+
+	if remoteIp.Equal(parseIp) {
+		return remoteIp, nil
+	}
+
+	return nil, errors.New("no ip")
 }
